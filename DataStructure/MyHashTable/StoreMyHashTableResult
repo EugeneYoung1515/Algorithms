@@ -1,0 +1,13 @@
+0.0 0.0 0.0 0.0 0.0 0.0 50000.0 0.0 75000.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 80000.0 
+10
+2
+16
+14
+11
+16
+0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 75000.0 67000.0 0.0 0.0 67000.0 0.0 80000.0 0.0 0.0 0.0 
+0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 75000.0 67000.0 0.0 0.0 67000.0 0.0 20000.0 0.0 0.0 0.0 
+0 0 0 0 0 0 0 0 0 0 0 67000.0 67000.0 0 0 0 0 80000.0 80000.0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 67000.0 67000.0 0 0 0 0 80000.0 80000.0 20000.0 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 test.Employee[name=Lina,salary=67000.0,hireDay=1993-04-12] test.Employee[name=Lina,salary=67000.0,hireDay=1993-04-12] 0 0 0 0 test.Manager[name=Carl Cracker,salary=80000.0,hireDay=1987-12-15][bonus=0.0] test.Manager[name=Carl Cracker,salary=80000.0,hireDay=1987-12-15][bonus=0.0] 0 0 0 
+0 0 0 0 0 0 0 0 0 0 0 test.Employee[name=Lina,salary=67000.0,hireDay=1993-04-12] test.Employee[name=Lina,salary=67000.0,hireDay=1993-04-12] 0 0 0 0 test.Manager[name=Carl Cracker,salary=80000.0,hireDay=1987-12-15][bonus=0.0] test.Manager[name=Carl Cracker,salary=80000.0,hireDay=1987-12-15][bonus=0.0] Employee2[name=Luis,salary=20000.0,hireDay=1999-02-07] 0 0 0 

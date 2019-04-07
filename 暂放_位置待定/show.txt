@@ -1,0 +1,6411 @@
+//按算法第四版的思路实现符号表
+//散列表
+//基于拉链法的散列表
+//就是数组的每一个元素是一个链表
+
+//树上还有基于线性探测法的散列表
+
+//先实现基于无序链表的顺序查找
+//SequentialSearchST
+//ST 符号表
+
+/*
+  约定：1.找不到key（key不存在），返回 value为null
+       2.value被赋为null，表示删除
+       3.合起来就是 找不到key或者value为null 都是value为null 符号表中不包含（contains）
+*/
+
+abstract class ST<K,V>{
+	abstract V get(K k);
+	abstract void put(K k,V v);
+	void delete(K k){
+		put(k,null);
+	}
+	boolean contains(K k){
+		return get(k)!=null;
+	}
+}	
+
+class SequentialSearchST<K,V> extends ST<K,V>{
+	Node first;
+
+	private class Node{
+		private K k;
+		private V v;
+		private Node next;
+		public Node(K k,V v){
+			this.k = k;
+			this.v = v;
+		}
+	}
+
+	public V get(K k){
+		for(Node tmp = first;tmp != null;tmp = tmp.next){
+			if(k.equals(tmp.k)){
+				return tmp.v;
+			}
+		}
+		return null;//找不到返回null 注意要加上这个
+	}
+
+	public void put(K k,V v){
+		if(first == null){
+			first = new Node(k,v);
+			return;
+		}
+		Node tmp = first;
+		for(;tmp != null;tmp = tmp.next){
+			//System.out.println("test");
+			if(k.equals(tmp.k)){
+				tmp.v = v;
+				return;//这里加上return 更好
+			}
+			if(tmp.next == null){
+				break;
+			}
+		}
+		tmp.next = new Node(k,v);
+	}//算法第四版是找不到就在开头加
+	//自己是在末尾加
+
+	public static void main(String... args){
+		SequentialSearchST<Integer,Integer> a = new SequentialSearchST<Integer,Integer>();
+		a.put(1,1);
+		a.put(2,2);
+		a.put(3,3);
+		System.out.println(a.get(1));
+		System.out.println(a.get(2));
+		System.out.println(a.get(3));
+		a.delete(2);
+		System.out.println(a.contains(2));
+		System.out.println(a.get(2));
+		a.delete(3);
+		a.delete(1);
+		System.out.println(a.get(3));
+	}
+}
+
+public class HashTable<K,V> extends ST<K,V>{
+	private SequentialSearchST<K,V>[] st;
+	private int M;
+
+	@SuppressWarnings("unchecked")
+	public HashTable(int M){
+		this.M = M;
+		st = (SequentialSearchST<K,V>[])new SequentialSearchST[M];//M数组元素数 或者是 链表条数
+		//不能创建泛型数组的替代方案
+
+		for(int i = 0;i < M;i++){
+			st[i] = new SequentialSearchST<K,V>();
+		}			
+	}
+	public HashTable(){//设置默认值
+		this(997);//M选质数 或者更好的的是键值对数量N的四分之一左右的质数
+	}
+
+	private int hash(K k){
+		return (k.hashCode() & 0xfffffff)%M;//按位运算 去掉符号位 不是取绝对值
+	}//key的哈希值除以数组长度，按余数确定分配的数组位置
+
+	public V get(K k){
+		return st[hash(k)].get(k);
+	}
+
+	public void put(K k,V v){
+		int tmp = hash(k);
+		//if(st[tmp] == null){
+			//st[tmp] = new SequentialSearchST<K,V>();
+		//}用的时候再初始化不行 用的时候再初始化 
+		//a.get(4) 就没初始化 是null.get(...) NullPointerException
+		st[hash(k)].put(k,v);
+	}
+
+	public static void main(String... args){
+		ST<Integer,Integer> a = new HashTable<Integer,Integer>();
+		a.put(1,1);
+		a.put(2,2);
+		a.put(3,3);
+		System.out.println(a.get(1));
+		System.out.println(a.get(2));
+		System.out.println(a.get(3));
+		a.delete(2);
+		System.out.println(a.contains(2));
+		System.out.println(a.get(2));
+		a.delete(3);
+		a.delete(1);
+		System.out.println(a.get(1));
+		System.out.println(a.get(4));
+	}
+}
+		
+
+//三向切分的快速排序
+
+import java.lang.Comparable;
+class ThreeWayQuickSort{
+    public static void sort(Comparable[] a,int low,int high){
+	//没有切分方法，直接是排序方法
+	if(low >= high){
+		return;
+	}
+	int lowlow = low;
+	int highhigh = high;
+	int lowPO = low;
+	//三项切分 上面三个变量
+	//lowlow表示等于基准数部分的第一个位置
+	//highhigh表示大于基准数的第一个位置的前一个位置
+
+	Comparable tar = a[low];
+
+	while(lowPO <= highhigh){//使用lowPO遍历
+		//int com = a[lowPO].compareTo(a[low]);这样错了 low位置的数后面会变 不会是基准数
+		int com = a[lowPO].compareTo(tar);
+		if(com == 0){
+			lowPO++;
+		}//遇到等于基准数的数 没有交换操作 序号自加
+
+		if(com < 0){
+			SortClass.swap(a,lowPO,lowlow);	
+			lowPO++;
+			lowlow++;
+		}//上面的结果是把基准数（或等于基准数的数）不断往中间移动
+		//把当前序号的数(lowPO)与上一个数(或者更前面的数 用lowlow表示 等于基准数部分的第一个位置)交换
+		//交换结果使得等于基准数的数在后(右) 比基准数小的数在前(左)
+
+		if(com > 0){
+			SortClass.swap(a,lowPO,highhigh);
+			highhigh--;
+			//这里没有lowPO++
+			//这里换过来的数 与基准数的大小关系不知道
+		}
+	}
+	//要把上面部分变成一个切分方法也行 就是要输出一个数组 就是两个数 lowlow和highhigh
+
+	//把子数组变成小于基准数 等于基准数 大于基准数三部分
+
+	//System.out.println(a[lowlow-1]+" "+a[lowlow]+" "+a[highhigh]+" "+a[highhigh+1]);
+	sort(a,low,lowlow-1);
+	sort(a,highhigh+1,high);
+    }
+
+    public static void main(String... args){
+	Integer[] a = {8,1,99,6,8,8,3,6,13,5,30,23,5,3,0,-1,4,2,7,10,9,6,8,4,18,15,20,45};
+	sort(a,0,a.length-1);
+	for(Integer i:a){
+		System.out.print(i+ " ");
+	}
+    }
+
+    public static void sort2(Comparable[] a,int low,int high){
+	//没有切分方法，直接是排序方法
+	if(low >= high){
+		return;
+	}
+	int lowlow = low;
+	int highhigh = high;
+	int lowPO = low+1;
+	//三项切分 上面三个变量
+	//lowlow表示等于基准数部分的第一个位置
+	//highhigh表示大于基准数的第一个位置的前一个位置
+
+	Comparable tar = a[low];
+
+	while(lowPO <= highhigh){//使用lowPO遍历
+		//int com = a[lowPO].compareTo(a[low]);这样错了 low位置的数后面会变 不会是基准数
+		int com = a[lowPO].compareTo(tar);
+		if(com < 0){
+			SortClass.swap(a,lowPO,lowlow);	
+			lowPO++;
+			lowlow++;
+		}//上面的结果是把基准数（或等于基准数的数）不断往中间移动
+		//把当前序号的数(lowPO)与上一个数(或者更前面的数 用lowlow表示 等于基准数部分的第一个位置)交换
+		//交换结果使得等于基准数的数在后(右) 比基准数小的数在前(左)
+
+		if(com > 0){
+			SortClass.swap(a,lowPO,highhigh);
+			highhigh--;
+			//这里没有lowPO++
+			//这里换过来的数 与基准数的大小关系不知道
+		}if(com == 0){//这里换成else会错 else和最近的if是一对
+				//这里换成else 上面换成else if可以
+			lowPO++;
+		}//遇到等于基准数的数 没有交换操作 序号自加
+	}
+	//要把上面部分变成一个切分方法也行 就是要输出一个数组 就是两个数 lowlow和highhigh
+
+	//把子数组变成小于基准数 等于基准数 大于基准数三部分
+
+	//System.out.println(a[lowlow-1]+" "+a[lowlow]+" "+a[highhigh]+" "+a[highhigh+1]);
+	sort2(a,low,lowlow-1);
+	sort2(a,highhigh+1,high);
+    }
+}
+	//有这个（QuickSort4）是因为
+//把QuickSort3里好几处因该是while的地方写成了if
+//QuickSort3中是把low-1位置的数与基准数交换 这在某些情况下是不对的
+//应该是 把high位置的数与基准数交换才对
+
+//还有QuickSort3里写的有点乱 这里捋一捋
+
+//QuickSort3里注释可以看
+
+//这个还不一定对
+//因为在QuickSort3把条件改一下之后 排序结果会很相似
+
+//自己在v2ex上回答别人快排问题的答案可以参考
+
+import java.lang.Comparable;
+class QuickSort4{
+	public static int partition(Comparable[] a,int low,int high){//切分（分割）方法
+						//low和high是序号
+			//要返回排定后的基准数位置 不然不能对左右两边进行递归
+
+		Comparable tar = a[low];
+		int tarIndex = low;
+		int tmp = high;
+		while(true){//不知道什么时候终止 先写这个 循环里面再写break
+			while(!SortClass.less(tar,a[low])){	//a[low] <=tar
+				if(low == tmp){
+					break;//不能超出边界
+					//这里break 下面else那里也会break
+				}
+				low++;				
+			}
+			while(!SortClass.less(a[high],tar)){
+				if(tarIndex == high){
+					break;//不能超出边界
+					//这里break 下面else那里也会break
+				}
+				high--;
+			}
+			if(low < high){
+				//交换保持左边比基准数小 右边比准数数大 现在还不是交换基准数
+				SortClass.swap(a,low,high);
+			}else{//low >= high
+				break;//跳出循环 是因为现在就就剩下基准数没有排到正确位置了
+			}
+		}
+		//下面是排定基准数 下面的语句要对上面的情况都成立
+			SortClass.swap(a,tarIndex,high);
+			return high;
+	}
+
+	public static void sort(Comparable[] a,int low,int high){
+		if(low >=high){
+			return;
+		}
+		int partition = partition(a,low,high);
+		sort(a,low,partition - 1);
+		sort(a,partition +1,high);
+	}
+
+	//随机打乱数组
+	//因为一直选子数组第一个为基准数 如果基准数一直是子数组的最值 复杂度会变成O(N2)
+	public static void shuffle(Comparable[] a){
+		int N = a.length;
+		for(int i = 0;i < N;i++){
+			int r = i + (int)(Math.random()*(N-i));
+			SortClass.swap(a,i,r);
+		}
+	}
+
+	public static void main(String... args){
+		Integer[] a = {8,1,99,6,8,8,3,6,13,5,30,23,5,3,0,-1,4,2,7,10,9,6,8,4,18,15,20,45};
+		shuffle(a);
+		sort(a,0,a.length-1);
+		for(Comparable i:a){
+			System.out.print(i+ " ");
+		}
+		System.out.println();
+/*
+		Integer[] b = {8,1,99,8,8,3,6,13,5,23,30,5,6,3,0,-1,4,2,7,10,9,6,8,4,18,15,20,45};
+		Integer[] c =new Integer[b.length];
+		for(int i = 0;i < 100;i++){
+			for(int j = 0;j < c.length;j++){
+				c[j] = b[j];
+			}
+			shuffle(c);
+			sort(c,0,c.length-1);
+			for(Comparable d:c){
+				System.out.print(d+ " ");
+			}
+			System.out.println();
+		}
+*/
+	}
+
+	public static int partition2(Comparable[] a,int low,int high){//切分（分割）方法
+						//low和high是序号
+			//要返回排定后的基准数位置 不然不能对左右两边进行递归
+
+		Comparable tar = a[low];
+		int tarIndex = low;
+		int tmp = high;
+		while(true){//不知道什么时候终止 先写这个 循环里面再写break
+			while(low<=tmp&&!SortClass.less(tar,a[low])){	//a[low] <=tar
+				//如果low<=tmp放在后面 会报数组越界 low<=tmp放前面 结果是false 后面的条件就短路了 不会执行
+				low++;
+			}
+			while(tarIndex<=high&&!SortClass.less(a[high],tar)){//和上面一样 low<=high 不能超出边界 可以在循环中用break替换
+				high--;
+			}
+			if((low-high) < 1){	//(low-high)>=1也就是其余数要么都比基准小（含等于）要么都比基准数大 没有部分大或部分小的情况
+				//交换保持左边比基准数小 右边比准数数大 现在还不是交换基准数
+				SortClass.swap(a,low,high);
+			}else{//else和最近的if是一对 这里的条件就是(low-high)==1
+				break;//跳出循环 是因为现在就什么基准数没有排到正确位置了
+			}
+		}
+		//下面是排基准数 下面的语句要对上面的情况都成立
+			high = high < tarIndex ? high+1 : high;
+			SortClass.swap(a,tarIndex,high);
+			return high;
+	}
+
+	public static int partition3(Comparable[] a,int low,int high){//切分（分割）方法
+						//low和high是序号
+			//要返回排定后的基准数位置 不然不能对左右两边进行递归
+
+		Comparable tar = a[low];
+		int tarIndex = low;
+		int tmp = high;
+		while(true){//不知道什么时候终止 先写这个 循环里面再写break
+			while(!SortClass.less(tar,a[low])){	//a[low] <=tar
+				low++;				
+				if(low == tmp+1){
+					break;//不能超出边界
+					//这里break 下面else那里也会break
+				}
+			}
+			while(!SortClass.less(a[high],tar)){
+				high--;
+				if(tarIndex == high+1){
+					break;//不能超出边界
+					//这里break 下面else那里也会break
+				}
+			}
+			if(low < high){
+				//交换保持左边比基准数小 右边比准数数大 现在还不是交换基准数
+				SortClass.swap(a,low,high);
+			}else{//low >= high
+				break;//跳出循环 是因为现在就就剩下基准数没有排到正确位置了
+			}
+		}
+		//下面是排定基准数 下面的语句要对上面的情况都成立
+			high = high < tarIndex ? high+1 : high;
+			SortClass.swap(a,tarIndex,high);
+			return high;
+	}
+
+	public static int partition4(Comparable[] a,int low,int high){//切分（分割）方法
+						//low和high是序号
+			//要返回排定后的基准数位置 不然不能对左右两边进行递归
+
+		Comparable tar = a[low];
+		int tarIndex = low;
+		int tmp = high;
+		while(low < high){//从 1里抽出一个low < high 去掉了一个else
+			while(!SortClass.less(tar,a[low])){	//a[low] <=tar
+				if(low == tmp){
+					break;//不能超出边界
+					//这里break 下面else那里也会break
+				}
+				low++;				
+			}
+			while(!SortClass.less(a[high],tar)){
+				if(tarIndex == high){
+					break;//不能超出边界
+					//这里break 下面else那里也会break
+				}
+				high--;
+			}
+			if(low < high){
+				//交换保持左边比基准数小 右边比准数数大 现在还不是交换基准数
+				SortClass.swap(a,low,high);
+			}
+		}
+		//下面是排定基准数 下面的语句要对上面的情况都成立
+			SortClass.swap(a,tarIndex,high);
+			return high;
+	}
+	//就和啊哈算法上面的的很接近了
+	//基准数都是选最左边的数
+	// 啊哈算法上面是从右边开始 最终是 SortClass.swap(a,tarIndex,low);
+	// 自己      是从左边开始 最终是 SortClass.swap(a,tarIndex,high);
+
+	//1 2 3三处主要是 用不用break 以及break用在哪里的区别
+	//4 从 1里抽出一个low < high 去掉了一个else
+}
+
+
+//图解算法的快排的原理
+//把子数组分成小于基准数 等于基准数 大于基准数三部分 排定基准数
+//啊哈算法 和 算法第四版的快排没有使用额外数组 形式更简洁 但是比较难理解
+//不尽兴而外的交换 不对时才交换
+
+//下面是算法第四版上的快排
+
+import java.lang.Comparable;
+
+public class QuickSort3{
+	public static int partition(Comparable[] a,int low,int high){//切分（分割）方法
+						//low和high是序号
+			//要返回排定后的基准数位置 不然不能对左右两边进行递归
+
+		Comparable tar = a[low];
+		int tarIndex = low;
+		int tmp = high;
+		while(true){//不知道什么时候终止 先写这个 循环里面再写break
+			if(!SortClass.less(tar,a[low])&&low<=tmp){	//if(a[low] <=tar){
+							//原来是low<=high 也行 这种形式 在某些排列形式的子数组中 为了排定基准数会少几次访问数组
+							//经过下面测试切分的方法测试 原来是low<=high 也行
+				low++;
+			}
+			if(!SortClass.less(a[high],tar)&&tarIndex<=high){//和上面一样 low<=high 不能超出边界 可以在循环中用break替换
+							//原来是low<=high 也行
+							//经过下面测试切分的方法测试 原来是low<=high 也行
+				high--;
+			}
+			if((low-high) < 1){	//(low-high)==1也就是其余数要么都比基准小（含等于）要么都比基准数大 没有部分大或部分小的情况
+				//交换保持左边比基准数小 右边比准数数大 现在还不是交换基准数
+				SortClass.swap(a,low,high);
+			}else{//else和最近的if是一对 这里的条件就是(low-high)==1
+				break;//跳出循环 是因为现在就什么基准数没有排到正确位置了
+			}//用 4 1 2 3 5 6 7 8 9的例子想
+			//或者用 4 1 2 3 4 4 5 6 7 8 9的例子想
+		}
+		//下面是拍定基准数 下面的语句要对上面的情况都成立
+			low = low > tarIndex ? low-1:low;//这里low可能就是子数组的终止序号 也可能是比子数组的终止序号多1
+			SortClass.swap(a,tarIndex,low);
+			return low;
+	}
+
+	public static void sort(Comparable[] a,int low,int high){
+		if(low >=high){
+			return;
+		}
+		int partition = partition4(a,low,high);
+		sort(a,low,partition - 1);
+		sort(a,partition +1,high);
+	}
+
+	public static void main(String... args){
+		Integer[] a = {8,1,99,8,8,3,6,13,5,23,5,3,0,-1,4,2,7,10,9,6,8,4,18,15,20,45};
+		shuffle(a);
+		sort(a,0,a.length-1);
+		for(Comparable i:a){
+			System.out.print(i+ " ");
+		}
+		System.out.println();
+/*
+		//测试切分的方法
+		Integer[] b = {5,1,2,6,4,4,4,3,7,8,9,10};//{5,1,2,6,5,5,3,7,8,9,10}//{5,1,2,6,7,4,3,7,8,9,10}
+		Integer[] c =new Integer[b.length];
+		//System.out.println(b[partition(b,0,b.length-1)]);//测试切分方法
+
+		for(int i = 0;i < 100;i++){
+			for(int j = 0;j < c.length;j++){
+				c[j] = b[j];
+			}
+			shuffle(c);//第一位一直是5 打乱时第一位不打乱 一直选第一位为切分元素 也就是选5为切分元素 看最终的输出是不是5
+			System.out.println("--"+c[0]);
+			for(Comparable d:c){
+				System.out.print(d + " ");
+			}
+			System.out.println();
+			System.out.println(c[partition2(c,0,c.length-1)]);
+		}
+*/
+	}
+
+	//随机打乱数组
+	public static void shuffle(Comparable[] a){
+		int N = a.length;
+		for(int i = 0;i < N;i++){//使用上面的测试方法时要int i = 1
+			int r = i + (int)(Math.random()*(N-i));
+			SortClass.swap(a,i,r);
+		}
+	}
+
+	// 下面是
+	//不能超出边界 不使用low<=high 而在循环中用break替换
+
+	public static int partition2(Comparable[] a,int low,int high){//切分（分割）方法
+						//low和high是序号
+			//要返回排定后的基准数位置 不然不能对左右两边进行递归
+
+		Comparable tar = a[low];
+		int tarIndex = low;
+		int tmp = high;
+		while(true){//不知道什么时候终止 先写这个 循环里面再写break
+			if(!SortClass.less(tar,a[low])){	//if(a[low] <=tar){
+				low++;
+				if(low == tmp+1){
+					break;
+				}				
+			}
+			if(!SortClass.less(a[high],tar)){// 不能超出边界 不使用low<=high 而在循环中用break替换
+				high--;
+				if(tarIndex == high+1){
+					break;
+				}
+			}
+			if((low-high) < 1){
+				//交换保持左边比基准数小 右边比准数数大 现在还不是交换基准数
+				SortClass.swap(a,low,high);
+			}
+			else{//或者直接用else
+				break;//跳出循环 是因为现在就就剩下基准数没有排到正确位置了
+			}
+		}
+		//下面是排定基准数 限免的语句要对上面的情况都成
+			low = low > tarIndex ? low-1:low;//这里low可能就是子数组的终止序号 也可能是比子数组的终止序号多1
+			SortClass.swap(a,tarIndex,low);
+			return low;
+	}
+
+	public static int partition3(Comparable[] a,int low,int high){//切分（分割）方法
+						//low和high是序号
+			//要返回排定后的基准数位置 不然不能对左右两边进行递归
+
+		Comparable tar = a[low];
+		int tarIndex = low;
+		int tmp = high;
+		while(true){//不知道什么时候终止 先写这个 循环里面再写break
+			while(!SortClass.less(tar,a[low])){	//if(a[low] <=tar){
+			//原来是if 换成 while就对了
+				if(low == tmp){
+					break;
+				}
+				low++;				
+			}
+			while(!SortClass.less(a[high],tar)){// 不能超出边界 不使用low<=high 而在循环中用break替换
+			//原来是if 换成 while就对了
+				if(tarIndex == high){
+					break;
+				}
+				high--;
+			}
+			if(low < high){
+				//交换保持左边比基准数小 右边比准数数大 现在还不是交换基准数
+				SortClass.swap(a,low,high);
+			}else{//low >= high
+				break;//跳出循环 是因为现在就就剩下基准数没有排到正确位置了
+			}
+		}
+		//下面是排定基准数 限免的语句要对上面的情况都成
+			SortClass.swap(a,tarIndex,high);
+			return high;
+	}
+	public static int partition4(Comparable[] a,int low,int high){//切分（分割）方法
+						//low和high是序号
+			//要返回排定后的基准数位置 不然不能对左右两边进行递归
+
+		Comparable tar = a[low];
+		int tarIndex = low;
+		int tmp = high;
+		while(true){//不知道什么时候终止 先写这个 循环里面再写break
+			while(low<=tmp&&!SortClass.less(tar,a[low])){	//if(a[low] <=tar){
+				//如果low<=tmp放在后面 会报数组越界 low<=tmp放前面 结果是false 后面的条件就短路了 不会执行
+							//原来是low<=high 也行 这种形式 在某些排列形式的子数组中 为了排定基准数会少几次访问数组
+							//经过下面测试切分的方法测试 原来是low<=high 也行
+				low++;
+			}//if(low == tmp+1){break;}
+			while(tarIndex<=high&&!SortClass.less(a[high],tar)){//和上面一样 low<=high 不能超出边界 可以在循环中用break替换
+							//原来是low<=high 也行
+							//经过下面测试切分的方法测试 原来是low<=high 也行
+				high--;
+			}//if(high == tarIndex-1){break;}
+			if((low-high) < 1){	//(low-high)==1也就是其余数要么都比基准小（含等于）要么都比基准数大 没有部分大或部分小的情况
+				//交换保持左边比基准数小 右边比准数数大 现在还不是交换基准数
+				SortClass.swap(a,low,high);
+			}else{//else和最近的if是一对 这里的条件就是(low-high)==1
+				break;//跳出循环 是因为现在就什么基准数没有排到正确位置了
+			}//用 4 1 2 3 5 6 7 8 9的例子想
+			//或者用 4 1 2 3 4 4 5 6 7 8 9的例子想
+		}
+		//下面是拍定基准数 下面的语句要对上面的情况都成立
+/*
+			low = low > tarIndex ? low-1:low;//这里low可能就是子数组的终止序号 也可能是比子数组的终止序号多1
+			SortClass.swap(a,tarIndex,low);
+			return low;
+*/
+			high = high < tarIndex ? high+1 : high;
+			SortClass.swap(a,tarIndex,high);
+			return high;
+
+	}
+
+}
+	
+
+	
+		
+			class QuickSort{
+	static int[]a = {0,110,3,457,1110,6,5,100,2,1,2000,0};//{0,10,9,8,7,6,5,4,3,2,1,0};
+	static int n;
+	static int h;
+	static int k,x;
+static void quickSort(int left,int right){
+	int i,j,t,temp,tmp2;
+
+	if(left>right)return;//虽然方法返回类型是void，但是这里用return来终止之后语句的执行
+	//这里终止语句，是为了停止下面的递归
+	//core java 第一卷末尾还是第二卷
+	//有好几处用到这种技巧
+/*
+return;停止方法之后内容的执行
+return;终止递归
+return null;
+return true;return false
+*/
+
+	
+	temp=a[left];
+	i=left;
+	j=right;
+	
+	while(i<j){
+ 	//while(i!=j){//
+		while(a[j]>=temp &&i<j)//为什么这个条件 也开始时就是 left<j 或者 i<right 不会超出要比较的块
+			j--;
+		while(a[i]<=temp &&i<j)//当i=j时，跳到下面i=j的部分
+			i++;
+		
+		if(i<j){//
+			t=a[i];
+			a[i]=a[j];
+			a[j]=t;
+		}
+	}
+	//下面运行的条件其实是i=j 上面while(i!=j)
+	//a[left]=a[i];
+	//a[i]=temp;
+
+	tmp2=a[i];
+	a[i]=a[left];
+	a[left]=tmp2;
+	//调试
+	System.out.println(temp);
+	list();
+	
+	h++;
+	System.out.println(h);
+
+	System.out.println(".....");
+	//调试
+	quickSort(left,i-1);
+	quickSort(i+1,right);
+
+}
+
+static void list(){
+	for(int b:a)System.out.print(b+" ");
+	System.out.println();
+}
+
+public static void main(String[] args){
+
+	k=1;
+	x=10;
+	quickSort(1,10);
+
+	for(int b:a)System.out.print(b+" ");
+}
+}
+/*
+上面的内容是把啊哈算法里的c语言程序翻译成java程序
+*/
+
+/*
+c语言里的数组 和 java里数组分析
+
+c语言里数组元素是个指针？
+
+java数组是个对象，数组元素不一定是
+使用引用变量指向一个数组对象
+通过引用变量操作数组的元素
+
+一个指向数组对象的引用变量改变了数组元素
+另一个指向同一数组的应用变量得到的是改变后的数组
+
+就像是通过指向一个对象的引用变量通过对象的方法（准确地说是引用变量的类型的方法，多态的原因）改变了对象的实例变量
+另一个指向同一个对象的引用变量得到的是实例变量改变后的对象
+
+多态
+父类引用 = 子类对象 父类引用指向子类对象 接口类=接口实现类对象
+
+父类引用.方法 这里的方法的是由引用的类型确定的
+
+所以父类引用.方法 里的方法是父类的方法或者是接口类的方法 子类继承来 也可以说是 父类和子类（接口类和实现类）共有的方法
+是父类的方法或者是接口类的方法 但是运行的内容是子类的方法内容 如果子类有覆盖 就按覆盖后的 子类没覆盖的话 父类方法和子类方法 内容是一样的 有没有覆盖都是子类的方法内容
+					（接口实现类的方法的内容）
+
+要通过引用使用子类特有的方法 要向下转型
+
+子类引用=(子类）父类引用
+
+*/
+
+/*
+
+c语言里的指针（go语言里的指针）与java里引用变量
+
+java引用变量 对象的内存位置
+
+*/
+
+/*
+
+c语言里址传递与java里值传递
+go里两种传递都有
+
+*/
+
+
+
+import java.lang.Comparable;
+public class SortClass {
+	public static boolean less(Comparable v,Comparable w){//less表示第一个参数比第二个参数小
+		return v.compareTo(w) < 0;
+	}
+	public static void swap(Comparable[] a,int i,int j){
+		Comparable tmp = a[i];
+		a[i] = a[j];
+		a[j] = tmp;
+	}
+	private static void show(Comparable[] a){
+		for(Comparable i:a){
+			System.out.print(i + " ");//算法第四版中也和自己一样，使用+ " "，加空格，来简单地格式化展示数据
+		}
+	}
+	public static boolean isSorted(Comparable[] a){
+		for(int i = 0;i < a.length;i++){
+			if(!less(a[i],a[i+1])){
+				return false;
+			}
+		}
+		return true;
+	}
+}//自底向上的归并排序
+//用循环换递归
+//数组递归，递归的基线条件是数组的长度为0或1
+//数组只有一个元素时，数组就排序了
+
+//用循环换递归
+//也是数组只有一个元素时，数组就排序了
+//两个数组各有一个元素 都排序了 归并后 排序了 成一个更大的数组
+
+//复用自顶向下的归并排序的归并方法
+import java.lang.Comparable;
+class MergeSortBottomToTop{
+	public static void sort(Comparable[] a){
+
+/*
+		for(int k = 2;k <= a.length;k=2*k){
+		//k从2开始而不是从1开始
+		//这里k是两个子数组归后的数组的长度
+		//要是从1开始 k就是子数组的长度
+		//不管k是从1开始还是从2开始
+		//第一步都是把两个长度为1的子数组归并成为长度为2的子数组
+
+		上边写的注释是对的
+		
+		算法第四版中 k就是子数组的长度
+
+
+			for(int i = 0;i < a.length-k+1;i = i+k){//注意 是i < a.length-k+1 不是i < a.length
+				//System.out.println(i);
+				//System.out.println(i+" "+(i+k/2-1)+" "+(i+k-1));
+
+				//MergeSortTopToBottom.merge(a,i,i+k/2-1,i+k-1);//i+k/2-1是i和i+k-1的均值
+*/
+			//上面注释掉是因为数组长度可能不是2的倍数
+		for(int k = 2;k <= 2*a.length;k=2*k){//难的地方 两个条件 1. 2*a.length a.length是17时 k能取到32 因为17比16多一点 k能取到的最大值设为m 用a表示a.length 即 (a/(m/2)+1)*(m/2) = m 即 a+m/2 = m 即 m = 2*a 或者 m = 2*a-1在a等于3时不行 其他情况下成立 如果还用 m = 2*a a等于16时 还要m等于32 也就是k能取到32 多循环一次
+			for(int i = 0;i < a.length-k/2;i = i+k){//2. a.length-k/2 就是要归并的子数组 至少留一个元素给后一个数组 也就是中间数（是归前一个数组的）i+k/2-1 < a.length -1 或者说 i+k/2 < a.length 计算出 i < a.length - k/2
+				MergeSortTopToBottom.merge(a, i, i+k/2-1, Math.min(i+k-1,a.length-1));//i+k/2-1是i和i+k-1的均值
+			}
+		}
+	}
+	//和希尔排序有点像 改变增量k的值
+
+	public static void main(String... args){
+		Integer[] a = {8,1,99,3,6,13,23,5,3,4,2,7,10,9,6,8,4,18,15,20,45};
+		MergeSortTopToBottom.b = new Integer[a.length];//要这句因为归并过程中使用了辅助数组 不然汇报空指针异常
+		sort(a);
+		for(Comparable i:a){
+			System.out.print(i+ " ");
+		}
+	}	
+}
+
+//这种自底向上的归并排序 也叫自然的归并排序//自顶向下的归并排序
+/*
+使用递归
+递归的极限条件 终止条件 (子)数组的长度等于1或等于0 也就是小于等于1
+
+归并的过程就是排序的过程
+归并过程是把两个有序的子数组变成一个有序的数组
+只需要两个子数组长度长度之和的循环 就能把两个有序的子数组变成一个有序的数组
+N的由来
+
+使用归并排序要二分数组 也就是分治
+logN的由来
+
+*/
+//先拆分 再归并
+
+
+import java.lang.Comparable;
+
+class MergeSortTopToBottom{
+	static Comparable[] b;
+	public static void sort(Comparable[] a,int low,int high){
+		if(high-low <=0){
+			return;//使用return 终止下面语句的执行
+		}//似乎不会是0
+
+		int mid = (low+high)/2;
+		sort(a,low,mid);
+		sort(a,mid+1,high);
+		merge(a,low,mid,high);		
+	}
+	public static void merge(Comparable[] a,int low,int mid,int high){
+//这个归并是难点
+//这个归并写出来后发了很多时间重新检查有没有把所有情况(条件)都考虑到
+//结果发现是上面递归的基线条件(递归的终止条件)写错了
+//子数组只有一个元素 high-low ==0 high==low 只有low这个位置的元素或者说只有high这个位置的元素
+//或没有元素high-low <=0
+
+//一开始自己写成high-low <=1 通过下面##发现的
+		//System.out.println(low+""+mid+""+high+"three");
+		int i = low;
+		int j = mid+1;
+
+		int m = low;//为了从辅助数组放回原数组
+//		while(true){//不知道什么时候终止循环，先写这个 循环里面break
+//		    if(i<=high){
+//把上面的循环和判断合并成一个
+
+		while(i<=high){
+			//System.out.println(low+""+j+"");
+			//if(a[low]==null)System.out.println(low+"low");
+			//if(a[j]==null)System.out.println(j+"j");
+			if(low<=mid&&j<=high&&SortClass.less(a[low],a[j])){//原来是a[mid+1],下面不好自加
+				//上面是同一个包的静态方法 用来判断两个数大小的
+				b[i] = a[low];
+				low++;
+				i++;
+				
+			}else if(low<=mid&&j<=high&&!SortClass.less(a[low],a[j])){
+				b[i] = a[j];
+				j++;
+				i++;
+			//先考虑上面两种情况 左边子数组和右边子数组较小的数先排定（放到辅助数组中）一边排定一个数 较少一个数 继续看这边的下一个数 具体思考细节看算法第四版
+			//前提是左右子数组都还有数
+			//上面两种情况考虑完 在考虑剩下的情况
+			//也就是一边子数组没数了
+
+			}else if(low>mid){
+				b[i] = a[j];
+				j++;
+				i++;
+			}else if(j>high){
+				b[i] = a[low];
+				low++;
+				i++;
+			}
+		}
+		//再从辅助数组放回元素组
+		for(i = i-1 ;i >= m;i--){
+			a[i] = b[i];
+			//System.out.print(a[i]+" ");//##
+		}
+		//System.out.println();//##
+	}
+
+/*
+自己一般只写
+1.if(){}
+2.if(){}
+  if(){}
+3.if(){
+    }else{}
+
+最近开始使用else if
+if 和else if 只能选一个执行
+也就是说 else if的条件 其实是if的条件的对立面和else if条件的交集 或者说两个条件都要
+*/
+
+	public static void main(String... args){
+		Integer[] a = {8,1,99,3,6,13,23,5,3,4,2,7,10,9,6,8};
+		b = new Integer[a.length];
+		sort(a,0,a.length-1);
+		for(int i:a){
+			System.out.print(i+ " ");
+		}
+	}
+}
+				class ShellSort{
+
+//按照算法第四版的思路
+//希尔排序就是多了算递增序列h的计算 下面的递增序列要记住
+//在插入排序的外面多加了一层循环 递减h的值直到1
+//插入排序部分(内层循环) 递减h j=j-h
+//h按照 h = 3*h+1 递增 之后按照h = h/3递减使用
+//h = 3*h+1的反向 可以是 h = h／3
+//(3*h+1)/3 = h+1/3 = h
+
+//改造自己写的两种插入排序 在两种插入思路的基础上 产生两种的希尔排序
+
+	public static int increment(int n){
+		int h = 1;
+		while(h > n/3){
+			h = 3*h + 1;
+		}
+		return h;
+	}
+	public static void shellSort(int[] a){
+		int h = increment(a.length);
+		while(h >=1){
+			for(int i = 1;i < a.length;i++){
+				for(int j = i;j >= h;j=j-h){
+					if(a[j] > a[j-h]){
+						break;
+					}
+					if(a[j] <= a[j-h]){
+						int tmp = a[j];
+						a[j] = a[j-h];
+						a[j-h] = tmp;
+					}
+				}
+			}
+			h = h/3;
+		}
+	}
+	public static void shellSort2(int[] a){
+		int h = increment(a.length);
+		while(h >=1){
+			for(int i = 1;i <a.length;i++){
+				int j = i;
+				for(;j >= h;j=j-h){
+					if(a[j-h] < a[i]){
+						break;
+					}
+				}
+				int tmp = a[i];
+				for(int z = i-h;z >= j;z = z-h){
+					a[z+h] = a[z];
+				}
+				a[j] = tmp;
+			}
+			h = h/3;
+		}
+	}
+	public static void main(String... args){
+		int[] a = {3,4,2,1,66,53,4,7,8,1,9,10,12,34,27};
+		shellSort(a);
+		for(int i:a){
+			System.out.print(i+" ");
+		}
+
+		System.out.println();
+		int[] b = {3,4,2,1,66,53,4,7,8,1,9,10,12,34,27};
+		shellSort2(b);
+		for(int i:b){
+			System.out.print(i+" ");
+		}
+
+	}
+}//按照算法第四版的排序api模板
+//思路也是按照算法第四版的
+//就是两两交换，向前换（向序号小的换）实现“在前面插入一个数”
+
+
+import java.lang.Comparable;
+public class InsertionSort2{
+	private static boolean less(Comparable v,Comparable w){//less表示第一个参数比第二个参数小
+		return v.compareTo(w) < 0;
+	}
+	private static void swap(Comparable[] a,int i,int j){
+		Comparable tmp = a[i];
+		a[i] = a[j];
+		a[j] = tmp;
+	}
+	private static void show(Comparable[] a){
+		for(Comparable i:a){
+			System.out.print(i + " ");//算法第四版中也和自己一样，使用+ " "，加空格，来简单地格式化展示数据
+		}
+	}
+	public static boolean isSorted(Comparable[] a){
+		for(int i = 0;i < a.length;i++){
+			if(!less(a[i],a[i+1])){
+				return false;
+			}
+		}
+		return true;
+	}
+	public static void sort(Comparable[] a){
+		for(int i=1;i < a.length; i++){
+			for(int j = i-1;j >=0;j--){
+				if(less(a[j+1],a[j])){
+					swap(a,j+1,j);
+				}
+			}
+		}
+	}
+	//上面的做法会多做额外的循环
+	//比过了位置对了但是又再比
+	//就是和冒泡的做法一样
+
+//就是两两交换，向前换（向序号小的换）实现“在前面插入一个数”
+
+	public static void sort2(Comparable[] a){
+		for(int i=1;i < a.length; i++){
+			for(int j = i-1;j >=0;j--){
+/*
+				if(less(a[j+1],a[j])){
+					swap(a,j+1,j);
+				}
+				if(!less(a[j+1],a[j])){
+					break;
+				}//不做额外的循环
+				上面这样错了
+				交换完再比较 肯定满足条件
+				之后退出循环
+				也就是只交换了一次
+				break部分放在前面就行了
+*/
+				if(!less(a[j+1],a[j])){
+					break;
+				}//不做额外的循环
+				if(less(a[j+1],a[j])){
+					swap(a,j+1,j);
+				}
+
+			}
+		}
+	}
+
+	public static void sort3(Comparable[] a){//算法第四版的做法 不使用break
+						//来不进行而外的循环
+		for(int i=1;i < a.length; i++){
+			for(int j = i-1;j >=0 && less(a[j+1],a[j]);j--){
+				swap(a,j+1,j);
+			}
+		}
+	}
+
+	private static class Employee implements Comparable<Employee>{
+		int salary;
+		Employee(int salary){
+			this.salary = salary;
+		}
+		public int compareTo(Employee e){
+			if(this.salary < e.salary)
+				return -1;
+			if(this.salary == e.salary)
+				return 0;
+				return 1;
+		}
+		public String toString(){
+			return salary+"";
+		}
+	}
+	
+	public static void main(String... args){
+		String[] a = {"aaa","aab","aba","abb","bbb","bab","bba","baa"};
+		//char[] b = {'a','z','y','c','d','f'};
+		int[] c = {3,5,2,7,4,9,2,5,66,8,12,25};
+		Integer[] d = {1,6,3,5,2,7,4,9,2,5,66,8,12,25};
+		Integer[] e = {1,6,3,5,2,7,4,9,2,5,66,8,12,25};
+		Integer[] f = {1,6,3,5,2,7,4,9,2,5,66,8,12,25};
+		
+		sort(a);
+		show(a);//可以用于字符串比较
+
+		System.out.println();
+		//sort(b);
+		//show(b);
+		sort(d);
+		show(d);
+
+		System.out.println();
+		sort2(e);
+		show(e);
+
+		System.out.println();
+		sort3(f);
+		show(f);
+
+		Employee[] g = {new Employee(2),new Employee(5),new Employee(7),new Employee(1),new Employee(10),new Employee(4),new Employee(6)};
+		System.out.println();
+		sort3(g);
+		show(g);
+
+	}
+}class InsertionSort{
+	static int[] a = {1,2,33,99,3,5,7,3,5,1,9,10,45,32,2,8,7};
+
+	public static void insertionSort(int[] a){
+		for(int i = 1;i < a.length;i++){
+			int j = i;
+			for(;j >= 0;j--){//这里要大于等于0，只是大于0的话，最终第一元素位置是错的
+				if(a[i]>a[j]){
+					break;
+				}
+			}
+			int tmp = a[i];
+			for(int z = i;z > j+1;z--){
+				a[z] = a[z-1];
+			}
+			 a[j+1] = tmp;//上面这招是翻编程珠玑时学到的
+					//也就是是用一个临时变量
+					//实现把数组里每个元素都往后移一个或者
+					//把数组中每个元素都往前移一个
+		}
+	}
+	public static void main(String[] args){
+		insertionSort(a);
+		for(int i:a){
+			System.out.print(i+ " ");
+		}
+	}
+}import java.util.*;
+
+class MyLinkedListQueue<T> implements MyQueue3<T>{
+	private Node first;
+	private Node last;
+	private int n;//队列中的元素个数
+
+	private class Node{//私有内部类
+		T t;
+		Node next;
+	}
+
+	public boolean isEmpty(){
+		if(first == null){//不能是first == last
+				//first == last 还有一个元素
+			return true;
+		}
+		return false;
+	}
+
+	public int size(){
+		return n;
+	}
+
+	public void enqueue(T t){
+		if(isEmpty()){
+			first = new Node();
+			first.t = t;
+			last = first;//队列是空的，之后队列尾部加了一个元素，是first == last，两者都指向一个Node对象
+		}else{
+			last.next = new Node();
+			(last.next).t = t;
+			last = last.next;
+		}
+		n++;
+	}
+	//这里的添加一个元素和下面的去掉一个元素，都要考虑到改变first和last的指向
+
+	//要考虑到下面几种情况
+	//1.集合元素为空时，添加一个元素
+	//2.集合为空时，去掉一个元素
+	//3.集合只有一个元素时，去掉最后一个元素
+
+	public T dequeue(){
+		if(isEmpty()!=true){
+			T t = first.t;
+			first = first.next;
+				if(isEmpty()){//看上面，也就是first == null
+					last = null;//也就是first == last，都指向null
+				}			
+			n--;
+			return t;
+		}else{
+			return null;
+		}
+	}
+
+	public Iterator<T> iterator(){
+		return new LinkedListIterator();
+	}//泛型的一个疑问
+	//Iterator<T> = new LinkedListIterator();
+
+	//这里是LinkedListIterator implements Iterator<T>
+	private class LinkedListIterator implements Iterator<T>{
+		private Node ifirst = first;
+		int nn = n;
+		
+		public boolean hasNext(){
+			if(nn != 0){
+				return true;
+			}
+			return false;
+		}
+		
+		public T next(){//这里就不用考虑会不会越界
+				//越界是上面的hasNext()考虑的
+			T t = ifirst.t;
+			ifirst = ifirst.next;
+			nn--;
+			return t;
+		}
+		public void remove(){}
+	}
+
+	public static void main(String... args){
+		MyLinkedListQueue<Integer> a = new MyLinkedListQueue<Integer>();
+		System.out.println(a.dequeue());
+		a.enqueue(1);
+		a.enqueue(2);
+		System.out.println(a.dequeue());
+		System.out.println(a.dequeue());
+		System.out.println(a.dequeue());
+
+		System.out.println();
+		a.enqueue(1);
+		a.enqueue(2);
+		for(Integer i:a){
+			System.out.println(i);
+		}
+
+	}
+}
+/*
+这个类和ResizingArrayQueue及ResizingArrayQueue2都是MyQueue3的子类 参照算法第四版的思路
+分别使用链表和数组实现队列 同时考虑了泛型和迭代
+可以照这些思路使用链表或数组实现栈
+*／
+
+
+class ArrayQueue {
+	Object[] a;
+	int head;
+	int tail;
+	ArrayQueue(int n){
+		a = new Object[n];
+	}
+
+	public void enqueue(Object t){
+
+		if(tail - head != a.length){
+			a[tail] = t;
+			tail++;
+		}else{
+			System.out.println("越界了");
+		}
+	}
+
+	public Object dequeue(){
+		if(tail - head > 0 ){
+			Object tmp = a[head];
+			a[head] = null;
+			head++;
+			return tmp;
+		}
+		return null;
+	}
+
+	public static void main(String... args){
+		ArrayQueue a = new ArrayQueue(3);
+Integer b = 1;
+		a.enqueue(b);
+b = 2;
+		a.enqueue(b);
+b = 3;
+		a.enqueue(b);
+b = 4;
+		a.enqueue(b);
+		
+		for(int i = 0;i < 3;i++){
+			System.out.println((Integer)a.dequeue());
+		}
+		System.out.println((Integer)a.dequeue());
+	}
+}
+//使用从ResizingArrayQueue2.java整理出的思路 写的定长队列
+//可能不能算是定长队列 定长
+//只能说冲末尾加 从开头减
+
+／*
+原来给数组初始化时(int i;i < a.length;i++)a[i] = ...;
+		(int i;i < a.length;i++)System.out.println(a[i]);
+就是从末尾加
+从开头减
+
+先进先出
+*／
+
+／*
+原来给数组初始化时(int i = 0;i < a.length;i++)a[i] = ...;
+		(int i = a.length-1;i >= 0 ;i--)System.out.println(a[i]);
+就是从末尾加
+末尾减
+
+后进先出
+
+栈
+*／
+
+
+
+
+
+	import java.util.*;
+
+class ResizingArrayQueue2<T> implements MyQueue3<T>{
+	
+	 T[] a = (T[]) new Object[0];
+	private int tail;//1 队列末尾元素的序号
+	private int head;//2 队列开头元素的序号
+
+	public boolean isEmpty(){
+		if(tail - head == 0 ){//3
+			return true;
+		}
+		return false;
+	}
+	
+	public int size(){
+		return tail-head;
+	}
+
+	private void resize(int max){
+		System.out.println();
+		System.out.println(max);
+		System.out.println();
+		
+		T[] tmp = (T[])new Object[max];//T[] tmp = new T[max]();这样不行
+		for(int i = head;i <= tail-1;i++){//4//注意这里
+			tmp[i-head] = a[i];//5
+		}
+		a = tmp;
+		tail= tail-head;//6
+		head = 0;//7
+	}
+	
+	public void enqueue(T t){
+		if(tail - head == a.length){
+			resize(2*a.length+1);
+		}
+		a[tail] = t;
+		tail++;//注意这里
+	
+		//两处注意这里
+		//在对尾加一个元素后，tail会自加
+		//再次在队尾加一个元素，可能需要调整数组长度，就是拷到另一个数组
+		//但是这时不会漏tail所指的元素，因为此时tail所指处没有没有元素（初始化），原因是上面的tail自加
+	}
+
+	public T dequeue(){
+	if(tail - head > 0 ){
+		if(tail - head == a.length/4){
+			resize(a.length/2);
+		}
+		T tmp = a[head];
+		a[head] = null;
+		head++;
+		return tmp;
+	}
+	return null;
+	}
+	public Iterator<T> iterator(){
+		return new ArrayIterator();
+	}
+	private class ArrayIterator implements Iterator<T>{
+		private int itail = tail;
+		private int jhead = head;
+		public boolean hasNext(){
+			if(itail - jhead > 0){
+				return true;
+			}
+			return false;
+		}
+		public T next(){
+			T tmp = a[jhead];
+			jhead++;
+			return tmp;
+		}
+		public void remove(){}
+	}
+	public static void main(String... args){
+		ResizingArrayQueue<Integer> b = new ResizingArrayQueue<Integer>();
+		for(int i=0;i < 4; i++){
+			b.enqueue(i);
+		}
+
+		for(Integer i:b){
+			System.out.println(i);
+		}
+		for(int i=0;i < 4; i++){
+			System.out.println(b.dequeue());
+		}
+		System.out.println(b.dequeue());
+
+	}
+}
+/*
+
+开始时head等于tail等于0
+head 队列开头元素的序号
+tail 队列末尾元素的序号
+在tail位置加一个元素后 tail自加
+
+队列元素为空 是 head等于tail
+head等于tail时 不会漏掉堆的最后一个元素
+加第一个元素后，立刻减掉一个元素，之后head是等于tail等于 开始时加第一个元素的下一个位置
+开始时head等于tail等于0 堆中没有元素 满足 队列元素为空 是 head等于tail
+import java.util.*;
+
+class ResizingArrayQueue<T> implements MyQueue3<T>{
+	
+	 T[] a = (T[]) new Object[0];
+	private int tail = -1;//1
+	private int head = 1;//2
+
+	public boolean isEmpty(){
+		if(tail - head +2 == 0 ){//3
+			return true;
+		}
+		return false;
+	}
+	
+	public int size(){
+		return tail-head+2;
+	}
+
+	private void resize(int max){
+		System.out.println();
+		System.out.println(max);
+		System.out.println();
+		
+		T[] tmp = (T[])new Object[max];//T[] tmp = new T[max]();这样不行
+		for(int i = head-1;i <= tail;i++){//4
+			tmp[i-head+1] = a[i];//5
+		}
+		a = tmp;
+		tail = tail-head+1;//6
+		head = 1;//7
+	}
+	
+	public void enqueue(T t){
+		if(tail - head+2== a.length){
+			resize(2*a.length+1);
+		}
+		a[tail+1] = t;
+		tail++;
+	}
+
+	public T dequeue(){
+	if(tail - head+2 > 0 ){
+		if(tail - head+2 == a.length/4){
+			resize(a.length/2);
+		}
+		T tmp = a[head-1];
+		a[head-1] = null;
+		head++;
+		return tmp;
+	}
+	return null;
+	}
+	public Iterator<T> iterator(){
+		return new ArrayIterator();
+	}
+	private class ArrayIterator implements Iterator<T>{
+		private int itail = tail;
+		private int jhead = head;
+		public boolean hasNext(){
+			if(itail - jhead+2 > 0){
+				return true;
+			}
+			return false;
+		}
+		public T next(){
+			T tmp = a[jhead-1];
+			jhead++;
+			return tmp;
+		}
+		public void remove(){}
+	}
+	public static void main(String... args){
+		ResizingArrayQueue<Integer> b = new ResizingArrayQueue<Integer>();
+		for(int i=0;i <100; i++){
+			b.enqueue(i);
+		}
+
+		for(Integer i:b){
+			System.out.println(i);
+		}
+		for(int i=0;i <100; i++){
+			System.out.println(b.dequeue());
+		}
+		System.out.println(b.dequeue());
+
+	}
+}
+	
+		
+	import java.util.*;
+
+interface MyQueue3<T> extends Iterable<T>{
+	void enqueue(T t);
+	T dequeue();
+	boolean isEmpty();
+	int size();
+}
+	import java.util.*;
+class Test{
+class Father{void go(){System.out.println("go");}}
+class Son extends Father{};
+	public Father go(){
+		Father f= new Father();
+		return f;
+	}
+	public static void main(String... args){
+		ArrayList<Father> a = new ArrayList<>();
+		//a.add(new Father());
+		//a.add(new Son());
+		Test.Father b = new Test().go();
+		b.go();
+		Father c = new Test().go();
+		Test t = new Test();
+		Test.Father d = t.new Father();
+		d.go();		
+	}
+}import java.util.*;
+
+class Father{}
+class Son extends Father{}
+
+class QuestionAboutFanxing1206{
+	public Father getFather(){
+		return new Father();
+	}
+	public Son getSon(){
+		return new Son();
+	}
+	public void test(){
+		ArrayList<Father> f = new ArrayList<Father>();
+		f.add(new Father());
+		f.add(new Son());
+
+		System.out.println("..............");	
+		List l = f;
+
+		System.out.println("..............");
+		ArrayList<Son> c = new ArrayList<Son>();
+		c.add(new Son());
+
+		ArrayList<? extends Father> a = f;
+		ArrayList<? extends Father> b = c;
+		
+		Father fa = f.get(1);
+		fa = a.get(1);
+		Son so = a.get(1);//错误: 不兼容的类型: CAP#1无法转换为Son
+		
+		fa = b.get(1);
+		so = b.get(1);//错误: 不兼容的类型: CAP#1无法转换为Son
+			/*
+
+			QuestionAboutFanxing1206.java:30: 错误: 不兼容的类型: CAP#1无法转换为Son
+					Son so = a.get(1);//错误: 不兼容的类型: CAP#1无法转换为QuestionAboutFanxing1206.Son
+					              ^
+			  其中, CAP#1是新类型变量:
+			    CAP#1从? extends Father的捕获扩展Father
+			QuestionAboutFanxing1206.java:33: 错误: 不兼容的类型: CAP#1无法转换为Son
+					so = b.get(1);//错误: 不兼容的类型: CAP#1无法转换为QuestionAboutFanxing1206.Son
+					          ^
+			  其中, CAP#1是新类型变量:
+			    CAP#1从? extends Father的捕获扩展Father
+
+			*/
+
+		a.add(new Son());
+			/*
+
+			QuestionAboutFanxing1206.java:35: 错误: 对于add(Son), 找不到合适的方法
+					a.add(new Son());
+					 ^
+			    方法 Collection.add(CAP#1)不适用
+			      (参数不匹配; Son无法转换为CAP#1)
+			    方法 List.add(CAP#1)不适用
+			      (参数不匹配; Son无法转换为CAP#1)
+			    方法 List.add(int,CAP#1)不适用
+			      (实际参数列表和形式参数列表长度不同)
+			    方法 AbstractCollection.add(CAP#1)不适用
+			      (参数不匹配; Son无法转换为CAP#1)
+			    方法 AbstractList.add(CAP#1)不适用
+			      (参数不匹配; Son无法转换为CAP#1)
+			    方法 AbstractList.add(int,CAP#1)不适用
+			      (实际参数列表和形式参数列表长度不同)
+			    方法 ArrayList.add(CAP#1,Object[],int)不适用
+			      (实际参数列表和形式参数列表长度不同)
+			    方法 ArrayList.add(CAP#1)不适用
+			      (参数不匹配; Son无法转换为CAP#1)
+			    方法 ArrayList.add(int,CAP#1)不适用
+			      (实际参数列表和形式参数列表长度不同)
+			  其中, CAP#1是新类型变量:
+			  CAP#1从? extends Father的捕获扩展Father
+
+			*/
+			//也就是和add()所有重载的方法的方法都不匹配
+		a.add(new Father());
+			/*
+
+			QuestionAboutFanxing1206.java:36: 错误: 对于add(Father), 找不到合适的方法
+					a.add(new Father());
+					 ^
+			    方法 Collection.add(CAP#1)不适用
+			      (参数不匹配; Father无法转换为CAP#1)
+			    方法 List.add(CAP#1)不适用
+			      (参数不匹配; Father无法转换为CAP#1)
+			    方法 List.add(int,CAP#1)不适用
+			      (实际参数列表和形式参数列表长度不同)
+			    方法 AbstractCollection.add(CAP#1)不适用
+			      (参数不匹配; Father无法转换为CAP#1)
+			    方法 AbstractList.add(CAP#1)不适用
+			      (参数不匹配; Father无法转换为CAP#1)
+			    方法 AbstractList.add(int,CAP#1)不适用
+			      (实际参数列表和形式参数列表长度不同)
+			    方法 ArrayList.add(CAP#1,Object[],int)不适用
+			      (实际参数列表和形式参数列表长度不同)
+			    方法 ArrayList.add(CAP#1)不适用
+			      (参数不匹配; Father无法转换为CAP#1)
+			    方法 ArrayList.add(int,CAP#1)不适用
+			      (实际参数列表和形式参数列表长度不同)
+			  其中, CAP#1是新类型变量:
+			    CAP#1从? extends Father的捕获扩展Father
+
+			*/
+
+		b.add(new Son());//和上面同样的错误
+		b.add(new Father());//和上面同样的错误
+
+		System.out.println("..............");
+		ArrayList<? super Son> d = f;
+		ArrayList<? super Son> e = c;
+	
+		d.add(new Son());
+		d.add(new Father());
+					/*
+					QuestionAboutFanxing1206.java:46: 错误: 对于add(Father), 找不到合适的方法
+							d.add(new Father());
+							 ^
+					   其中, CAP#1是新类型变量:
+					    CAP#1从? super Son的捕获扩展Object 超 Son
+
+					*/
+					//也就是和add()所有重载的方法的方法都不匹配
+
+					//d.add(new Son());行
+					//d.add(new Father());不行
+
+					//因为d中能放的是Son的父类，但是不一定是Father
+					//或者说d中能放的是Son的父类，不是Father
+
+					//能放Son，是因为父类引用指向子类对象 多态
+					//ArrayList<Father> f = new ArrayList<Father>();
+					//ArrayList<? super Son> d = f;
+					//d.add(new Son());
+					//d.add(new Father());
+
+					//ArrayList<Father> f = new ArrayList<Father>();
+					//f.add(new Father());
+					//f.add(new Son());
+					//这里也能放Son 子类对象
+					//也是父类引用指向子类对象 多态
+
+		e.add(new Son());
+		e.add(new Father());
+				/*
+
+				QuestionAboutFanxing1206.java:49: 错误: 对于add(Father), 找不到合适的方法
+						e.add(new Father());
+						 ^
+				  其中, CAP#1是新类型变量:
+				    CAP#1从? super Son的捕获扩展Object 超 Son
+
+				*/
+
+		fa = d.get(1);
+		so = d.get(1);
+		
+		fa = e.get(1);
+		so = e.get(1);
+				/*
+				QuestionAboutFanxing1206.java:54: 错误: 不兼容的类型: CAP#1无法转换为Father
+						fa = e.get(1);
+						          ^
+				  其中, CAP#1是新类型变量:
+				    CAP#1从? super Son的捕获扩展Object 超 Son
+				QuestionAboutFanxing1206.java:55: 错误: 不兼容的类型: CAP#1无法转换为Son
+						so = e.get(1);
+						          ^
+				  其中, CAP#1是新类型变量:
+				    CAP#1从? super Son的捕获扩展Object 超 Son
+
+				*/
+		
+		System.out.println("..............");
+		a = new ArrayList<Father>();
+		b = new ArrayList<Son>();
+
+		fa = a.get(1);
+		so = a.get(1);
+
+		fa = b.get(1);
+		so = b.get(1);
+
+		a.add(new Son());
+		a.add(new Father());
+
+		b.add(new Son());
+		b.add(new Father());
+
+		System.out.println("..............");
+		d = new ArrayList<Son>();
+		e = new ArrayList<Father>();
+	
+		d.add(new Son());
+		d.add(new Father());
+		
+		e.add(new Son());
+		e.add(new Father());
+
+		fa = d.get(1);
+		so = d.get(1);
+		
+		fa = e.get(1);
+		so = e.get(1);		   
+	}
+			
+	public static void main(String... args){
+		new QuestionAboutFanxing1206().test();
+	}
+}
+//用Sublime打开比较清晰 因为有一堆注释
+//ArrayList<? extends Father> fa= new ArrayList<Father>();
+//								new ArrayList<Son>();
+
+//只能get，不能add
+//而且get出来的
+//Father a = fa.get(1); 只能是父类(Father类)引用指着，不能用Son类引用指着，因为不一定是Son。
+//						父类引用 = 子类对象；
+
+//ArrayList<? super Son> fa= new ArrayList<Father>();
+//								new ArrayList<Son>();
+//只能add，不能get
+//而且add
+//只能放Son类对象或者Son类的子类的对象，而不能放Father类
+//fa.add(new Son());也是父类引用指向子类对象
+
+//ArrayList<Father> fa = new ArrayList<Father>();
+//f.add(new Father());
+//f.add(new Son());
+//不仅能放父类(Father类)对象，也能放子类(Son)类对象.
+//还是父类引用指向子类对象
+
+//泛型 多态 父类引用指向子类对象 父类引用 = 子类对象
+
+//泛型中的PECS原则
+//泛型参数T只出现在方法入参，要使用super，也就是方法入参类似于List<? super T>
+//泛型参数T只出现在方法返回值，要使用extends，也就是方法入参类似于List<? extends T>
+
+//要get就使用<? extends T>
+//要add就使用<? super T>
+
+//上面两个是能对应起来的
+//ArrayList<? super Son> fa= new ArrayList<Father>();
+//								new ArrayList<Son>();
+//fa.add(new Son());
+
+//变成
+//void <T> go(ArrayList<? super T> fa){
+//		fa.add(new Son());
+//}
+
+//ArrayList<? extends Father> fa= new ArrayList<Father>();
+//								new ArrayList<Son>();
+// Father a = fa.get(1);
+
+//变成
+// <T> T go(ArrayList<? extends T> fa){
+//		return fa.get(1);
+//}
+
+//ArrayList<?> fa= new ArrayList<Father>();
+//					new ArrayList<Son>();
+//使用这个 是不能add，也不能get
+
+/*
+public static <T> void copy(List<? super T> dest, List<? extends T> src)
+public static <T> void copy(List<? super T> dest, List<T> src)
+public static <T> void copy(List<T> dest, List<? extends T> src)
+
+第一种里，两个问号？就不可能代表同一类型
+意思说 传给第一个参数的集合的元素类型是T的父类，传给第二个参数的集合的类型是T的子类
+
+三种参数组合的意思都是
+传给第一个参数的集合的类型 是 传给第二个参数的集合的类型 的父类（含相同类）
+
+*／
+
+/*
+https://www.v2ex.com/t/514746
+
+解答 谷歌搜 v2ex 知乎 stackoverflow core java
+
+https://www.zhihu.com/question/20400700/answer/117464182?utm_source=ZHShareTargetIDMore&utm_medium=social&utm_oi=1017014374166216704
+
+https://www.zhihu.com/question/64750890/answer/223813028?utm_source=ZHShareTargetIDMore&utm_medium=social&utm_oi=1017014374166216704
+*／
+
+
+
+
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+import java.util.logging.*;
+import javax.swing.*;
+
+/**
+ * A modification of the image viewer program that logs various events.
+ * @version 1.03 2015-08-20
+ * @author Cay Horstmann
+ */
+public class LoggingImageViewer
+{
+   public static void main(String[] args)
+   {
+      if (System.getProperty("java.util.logging.config.class") == null
+            && System.getProperty("java.util.logging.config.file") == null)
+      {
+         try
+         {
+            Logger.getLogger("com.horstmann.corejava").setLevel(Level.ALL);
+            final int LOG_ROTATION_COUNT = 10;
+            Handler handler = new FileHandler("%h/Desktop/java/LoggingImageViewer.log", 0, LOG_ROTATION_COUNT);
+            Logger.getLogger("com.horstmann.corejava").addHandler(handler);
+         }
+         catch (IOException e)
+         {
+            Logger.getLogger("com.horstmann.corejava").log(Level.SEVERE,
+                  "Can't create log file handler", e);
+         }
+      }
+
+      EventQueue.invokeLater(() ->
+            {
+               Handler windowHandler = new WindowHandler();
+               windowHandler.setLevel(Level.ALL);
+               Logger.getLogger("com.horstmann.corejava").addHandler(windowHandler);
+
+               JFrame frame = new ImageViewerFrame();
+               frame.setTitle("LoggingImageViewer");
+               frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+               Logger.getLogger("com.horstmann.corejava").fine("Showing frame");
+               frame.setVisible(true);
+            });
+   }
+}
+
+/**
+ * The frame that shows the image.
+ */
+class ImageViewerFrame extends JFrame
+{
+   private static final int DEFAULT_WIDTH = 300;
+   private static final int DEFAULT_HEIGHT = 400;   
+
+   private JLabel label;
+   private static Logger logger = Logger.getLogger("com.horstmann.corejava");
+
+   public ImageViewerFrame()
+   {
+      logger.entering("ImageViewerFrame", "<init>");      
+      setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+
+      // set up menu bar
+      JMenuBar menuBar = new JMenuBar();
+      setJMenuBar(menuBar);
+
+      JMenu menu = new JMenu("File");
+      menuBar.add(menu);
+
+      JMenuItem openItem = new JMenuItem("Open");
+      menu.add(openItem);
+      openItem.addActionListener(new FileOpenListener());
+
+      JMenuItem exitItem = new JMenuItem("Exit");
+      menu.add(exitItem);
+      exitItem.addActionListener(new ActionListener()
+         {
+            public void actionPerformed(ActionEvent event)
+            {
+               logger.fine("Exiting.");
+               System.exit(0);
+            }
+         });
+
+      // use a label to display the images
+      label = new JLabel();
+      add(label);
+      logger.exiting("ImageViewerFrame", "<init>");
+   }
+
+   private class FileOpenListener implements ActionListener
+   {
+      public void actionPerformed(ActionEvent event)
+      {
+         logger.entering("ImageViewerFrame.FileOpenListener", "actionPerformed", event);
+
+         // set up file chooser
+         JFileChooser chooser = new JFileChooser();
+         chooser.setCurrentDirectory(new File("."));
+
+         // accept all files ending with .gif
+         chooser.setFileFilter(new javax.swing.filechooser.FileFilter()
+            {
+               public boolean accept(File f)
+               {
+                  return f.getName().toLowerCase().endsWith(".gif") || f.isDirectory();
+               }
+
+               public String getDescription()
+               {
+                  return "GIF Images";
+               }
+            });
+
+         // show file chooser dialog
+         int r = chooser.showOpenDialog(ImageViewerFrame.this);
+
+         // if image file accepted, set it as icon of the label
+         if (r == JFileChooser.APPROVE_OPTION)
+         {
+            String name = chooser.getSelectedFile().getPath();
+            logger.log(Level.FINE, "Reading file {0}", name);
+            label.setIcon(new ImageIcon(name));
+         }
+         else logger.fine("File open dialog canceled.");
+         logger.exiting("ImageViewerFrame.FileOpenListener", "actionPerformed");
+      }
+   }
+}
+
+/**
+ * A handler for displaying log records in a window.
+ */
+class WindowHandler extends StreamHandler
+{
+   private JFrame frame;
+
+   public WindowHandler()
+   {
+      frame = new JFrame();
+      final JTextArea output = new JTextArea();
+      output.setEditable(false);
+      frame.setSize(200, 200);
+      frame.add(new JScrollPane(output));
+      frame.setFocusableWindowState(false);
+      frame.setVisible(true);
+      setOutputStream(new OutputStream()
+         {
+            public void write(int b)
+            {
+            } // not called
+
+            public void write(byte[] b, int off, int len)
+            {
+               output.append(new String(b, off, len));
+            }
+         });
+   }
+
+   public void publish(LogRecord record)
+   {
+      if (!frame.isVisible()) return;
+      super.publish(record);
+      flush();
+   }
+}
+//使用数组实现堆（优先队列）
+
+//也就是堆满足队列的特性 对头出 队尾进
+
+//写堆向下调整的方法
+//写堆向上调整的方法
+//写使用数组建立堆的方法 O(NlogN) 向上调整
+//写使用数组建立堆的方法 O(N) 线性 向下调整 O(N) = O(N/2 * 2 )
+//写删除堆顶的方法（删除堆顶，之后把堆的最后一个节点的值赋给堆顶，之后堆的节点总数减一，堆向下调整）
+
+//两种堆排序O(NlogN)
+//一种是打印或把堆顶放到一个新的数组中，之后删除堆顶，删除堆顶使用上面的删除堆顶的方法 从小到大堆排序 建立的是最小堆 堆顶是堆中最小的元素
+//另一种是从小到大堆排序 建立的是最大堆 堆顶是堆中最大的元素 
+//之后将堆顶的值与堆最后一个节点的值交换，堆的节点总数减一，堆向下调整
+//堆的节点总数n减一，用来实现堆的数组有初始化的长度是不变的
+
+class MyHeap{
+
+	static int top;//堆顶 top = 1 下面没用到
+	static int n;//堆的节点总数
+
+	static int[] array  = {3,5,2,1,7,8,3,4,9,10};
+	static int[] heap;//堆
+
+	public static void shiftdown(int i){//向下调整
+		int MINindex = i;//用来记录序号
+		int tmp;
+		boolean flag = true;
+		while((i*2 <= n)&&flag){//i*2 左儿子的序号 ||i*2+1 <= n
+			if(i*2 <= n){
+				if(heap[i] > heap[i*2]){
+					MINindex = i*2;
+				}else{
+					MINindex = i;
+				}
+			}
+			if(i*2+1 <= n){
+				if(heap[MINindex] > heap[i*2+1]){//前面一直没发现的地方 前面使用的是heap[i]
+								//使用heap[i] > heap[i*2+1]，
+								//并不能从父节点和两个子节点中获得最小值的序号
+
+								//如果能获得最小值的序号
+								//通过最小值序号将父节点的数与最小值交换
+								//使得新的父节点的数比两个子节点都小
+
+								//例子
+
+								//   5
+								// 2   3
+								
+								//因为第一次比较后，i并不是记录较小节点的序号
+								//MINindex才是记录较小节点的序号
+					MINindex = i*2+1;
+				}
+/*
+				else{
+					MINindex = i;//多这个也错
+						//这个使得第一次比较不起作用了
+				}
+*/
+			}
+			if(MINindex != i){
+				tmp = heap[i];
+				heap[i] = heap[MINindex];
+				heap[MINindex] = tmp;
+				
+				i = MINindex;//继续向下调整 重点
+			}else{
+				flag = false;// 重点
+			}//上面是把一个结点的值 变成 这个结点和左结点或右结点中最小值(交换)
+
+			//怎么发现shiftdown里的错误
+			//使用creatHeap2里使用的是shiftdown，第一种堆排序使用的也是shiftdown
+			//而且使用creatHeap2的产生的堆的堆顶不是最小的数
+		}
+	}
+/*
+	public staic void shiftdown2(int i){//向下调整
+		int MINindex;//用来记录序号
+		int tmp;
+		boolean flag = true;
+		while((i*2 <= n||i*2+1 <= n)&&flag){//i*2 左儿子的序号
+		//i*2 <= n 已经把节点i有左儿子或右儿子的情况都包含进去了
+			if(i*2 <= n){
+				if(heap[i] > heap[i*2]){
+
+					tmp = heap[i*2];
+					heap[i*2] = heap[i];
+					heap[i] = tmp;
+
+				}
+			}
+			if(i*2+1 <= n){
+				if(heap[i] > heap[i*2+1]){
+
+					tmp = heap[i*2+1];
+					heap[i*2+1] = heap[i];
+					heap[i] = tmp;
+
+				}
+			}//上面这个调整完
+			//不知道是那几个结点交换了
+			//有交换才要继续向下调整
+		}
+	}
+*/
+
+	public static void shiftup(int i){//向上调整
+		int MINindex;//用来记录序号
+		int tmp;
+		boolean flag = true;
+		while(i/2 >= 1&&flag){
+			if(heap[i/2] > heap[i]){
+				tmp = heap[i];
+				heap[i] = heap[i/2];
+				heap[i/2] = tmp;
+				
+				i = i/2;
+			}else{
+				flag = false;
+			}
+		}
+	}
+
+	public static void createHeap(){
+		heap = new int[array.length+1];
+		n = array.length;
+		System.out.println("结点总数"+n);
+		for(int i = 0;i < array.length;i++){
+			heap[i+1] = array[i];
+			shiftup(i+1);
+		}
+	}
+
+	public static void createHeap2(){
+		heap = new int[array.length+1];
+		n = array.length;
+		System.out.println("结点总数"+n);
+		for(int i = 0;i < array.length;i++){
+			heap[i+1] = array[i];
+		}
+		for(int i = n/2;i >= 1;i--){//O(N/2)
+		//上面i==1时能向下调整
+			shiftdown(i);
+		}
+	}
+
+	public static int deleteTop(){//删除堆顶
+		return deleteMin();
+	}
+	public static int deleteMin(){//删除堆顶
+	//这也是第一种堆排序的核心内容
+		int tmp;
+		tmp = heap[1];
+		heap[1] = heap[n];
+		n--;
+		shiftdown(1);
+		return tmp;
+	}
+	public static int heapSort(){
+		return deleteMin();
+	}
+
+	public static int[] heapSort2(){
+		//上面都是按最小堆来的，就是父节点的值小于两个子节点
+		//下面建立最大堆	
+		int[] maxHeap = new int[array.length+1];
+		n = array.length;
+		for(int i = 0;i < array.length;i++){
+			maxHeap[i+1] = array[i];
+		}
+		for(int i = n/2;i >= 1;i--){//O(N/2)
+		//上面i==1时能向下调整
+			shiftdownformaxHeap(maxHeap,i,n);
+		}
+
+//另一种是从小到大堆排序 建立的是最大堆 堆顶是堆中最大的元素 
+//之后将堆顶的值与堆最后一个节点的值交换，堆的节点总数减一，堆向下调整
+//堆的节点总数n减一，用来实现堆的数组有初始化的长度是不变的
+		int m = n;
+		for(int i =1; i <= m;i++){//前面一直没发现的地方 原来是i <= n
+					//下面有一处有把n的值赋给m，用m来定循环边界
+
+					//如果用i <= n，循环的结果是 n-- i++
+					//n i
+					//10 1
+					//9 2
+					//8 3
+					//7 4
+					//6 5
+					//5 6就不能进入循环了
+					//i只取到了1到5
+
+
+			int tmp = maxHeap[1];
+			maxHeap[1] = maxHeap[n];
+			maxHeap[n] = tmp;
+			//System.out.println(tmp+ " ");
+
+			n--;
+			shiftdownformaxHeap(maxHeap,1,n);
+		}
+		return maxHeap;
+	}
+		
+	public static void shiftdownformaxHeap(int[] maxHeap, int i,int n){//向下调整
+		int Maxindex = i;//用来记录序号
+		int tmp;
+		boolean flag = true;
+		while(i*2 <= n&&flag){//i*2 左儿子的序号
+		//i*2 <= n 已经把节点i有左儿子或右儿子的情况都包含进去了
+			if(i*2 <= n){
+				if(maxHeap[i] < maxHeap[i*2]){
+					Maxindex = i*2;
+				}else{
+					Maxindex = i;
+				}
+			}
+			if(i*2+1 <= n){
+				if(maxHeap[Maxindex] < maxHeap[i*2+1]){
+					Maxindex = i*2+1;
+				}
+			}
+			if(Maxindex != i){
+				tmp = maxHeap[i];
+				maxHeap[i] = maxHeap[Maxindex];
+				maxHeap[Maxindex] = tmp;
+				
+				i = Maxindex;//继续向下调整 重点
+			}else{
+				flag = false;// 重点
+			}//上面是把一个结点的值 变成 这个结点和左结点或右结点中最小值(交换)
+		}
+	}
+
+	public static void main(String... args){
+		createHeap();
+		int m = n;
+		//下面不能用n，因为deleteMin()中n会自减
+		for(int i = 1;i <= m;i++){
+			System.out.print(heap[i]+ " ");
+		}
+		System.out.println("下面是堆排序");
+		for(int i = 1;i <= m;i++){
+			System.out.print(deleteMin()+ " ");
+		}
+
+		System.out.println();
+		createHeap2();
+		for(int i = 1;i <= m;i++){
+			System.out.print(heap[i]+ " ");
+		}
+		System.out.println("下面是堆排序");
+		for(int i = 1;i <= m;i++){
+			System.out.print(deleteMin()+ " ");
+		}
+		System.out.println();
+		System.out.println("下面是堆排序");
+		int[] maxHeap = heapSort2();
+		for(int i = 1;i < maxHeap.length;i++){
+			System.out.print(maxHeap[i]+ " ");
+		}
+		kmax(5);//第5大的数
+		//第5大的数 第5大的数是从小到大排，右边数起第5个数
+		kmax(8);//第8大的数 第8大的数是从小到大排，右边数起第5个数
+	}
+//下面写获取第k大的数
+//建立有k个节点的最小堆
+	public static void kmax(int k){//第k大的数
+		int tmp;
+		createHeapknode(k);
+		for(int i = k;i < array.length;i++){
+			if(array[i]>heap[1]){
+				heap[1]=array[i];
+				shiftdown(1);
+			}
+		}
+		System.out.println("下面是第k大的数");
+		System.out.println(heap[1]);
+		System.out.println("下面是前k大的数");
+		for(int i = 1;i<=k;i++){
+			System.out.print(heap[i]+ " ");
+		}
+	}
+		
+	public static void createHeapknode(int k){
+		heap = new int[k+1];
+		n = k;
+		System.out.println("结点总数"+n);
+		for(int i = 0;i < k;i++){
+			heap[i+1] = array[i];
+		}
+		for(int i = n/2;i >= 1;i--){//O(N/2)
+		//上面i==1时能向下调整
+			shiftdown(i);
+		}
+	}
+}
+		
+		
+
+	
+	
+
+			
+			
+	
+
+				
+			
+
+	class QuestionAboutExtendsAndStatic{
+	public void go(){
+		System.out.println("father go");
+	}
+	public void go2(){
+		System.out.println(this.getClass());
+		System.out.println("father go");
+	}
+	public static void staticgo(){
+		System.out.println("father staticgo");
+	}
+	public static void staticgo2(){
+		System.out.println("father staticgo2");
+	}
+}
+
+class QuestionAboutExtendsAndStaticSon extends QuestionAboutExtendsAndStatic{
+	public void go(){
+		System.out.println("son go");
+	}
+	public static void staticgo(){
+		System.out.println("son staticgo");
+	}
+	public static void main(String... args){
+
+		System.out.println("父类引用 = 子类对象");
+		QuestionAboutExtendsAndStatic a = new QuestionAboutExtendsAndStaticSon();
+		a.go();
+		a.staticgo();
+
+		System.out.println("父类引用 =（父类）子类引用，向上转型（取类型）");
+		QuestionAboutExtendsAndStaticSon b = new QuestionAboutExtendsAndStaticSon();
+		a = (QuestionAboutExtendsAndStatic)b;
+		a.go();
+		a.staticgo();
+
+		System.out.println("Object类引用 = 子类引用\n父类引用 =（父类）Object类引用");
+		Object c = b;
+		a = (QuestionAboutExtendsAndStatic)c;
+		a.go();
+		a.staticgo();
+
+		System.out.println("子类引用.静态方法");
+		System.out.print("子类覆盖了父类的静态方法");
+		b.staticgo();
+		System.out.print("子类没有覆盖了父类的静态方法");
+		b.staticgo2();
+
+		System.out.println("父类引用.静态方法");
+		QuestionAboutExtendsAndStatic d = new QuestionAboutExtendsAndStaticSon();
+		d.staticgo();
+		d.staticgo2();
+
+		System.out.print("父类引用 =（父类）子类对象");
+		a = (QuestionAboutExtendsAndStatic)new QuestionAboutExtendsAndStaticSon();
+		a.go();
+		System.out.print("子类对象.方法");
+		new QuestionAboutExtendsAndStaticSon().go();
+		System.out.print("((父类)子类对象).方法");
+		((QuestionAboutExtendsAndStatic)new QuestionAboutExtendsAndStaticSon()).go();
+
+		new QuestionAboutExtendsAndStaticSon().go2();
+		a = new QuestionAboutExtendsAndStaticSon();
+		a.go2();
+	}
+}
+/*
+结论是
+1.父类引用 = 子类对象
+2.子类引用 = 子类对象，父类引用 =（父类）子类引用，向上转型（取类型）
+这两种的效果是一样的 向上转型
+方法的内容 都是按引用所指对象的实质定的
+
+父类引用 = 子类对象
+子类引用 =（子类）父类引用 
+向下转型
+
+引用.方法 能调用的方法是按引用类型定的（指能调用哪个方法）
+调用的方法的内容是引用所指的对象定的
+
+类的静态方法子类会继承
+不使用类名，而使用引用变量名，调用类的静态方法
+能调用的静态方法是引用变量变量的类型定的（指能调用哪个方法），而且内容是按引用变量的类型定的
+或者父类引用指向父类对象或者子类对象
+父类引用.静态方法，调用的都是父类的静态方法
+*/class SV{
+//用内存去想
+//内存中类SV有一个属于类的静态实例变量a
+//类SV的所有对象共享变量a
+
+/*
+QuestionAboutStaticVariable的主程序入口(main方法）使得内存中有类SV，内存中类SV有一个属于类的静态实例变量a，后面不断new SV的对象，改变变量a的值
+当QuestionAboutStaticVariable的main方法执行完毕，类SV及类SV的静态实例变量a,被垃圾收集器回收(清理)掉，在内存中不存在
+
+类加载
+
+或是运行类SV2的main方法，改变类SV2的静态实例变量a的值，main方法运行结束，静态实例变量a被回收。
+每次重新运行类SV2的main方法，a的值都一样
+*/
+
+
+/*
+
+bogon:java eugeneyoung$ java QuestionAboutStaticVariable
+11
+11
+12
+bogon:java eugeneyoung$ java SV2
+0
+2
+bogon:java eugeneyoung$ java SV2
+0
+2
+bogon:java eugeneyoung$ java SV2
+0
+2
+bogon:java eugeneyoung$ 
+
+*/
+	static int a;
+	SV(){
+		a++;
+	}
+	static void add(){
+		a++;
+		System.out.println(a);
+	}
+}
+
+class SV2{
+	static int a;
+	SV2(){
+		a++;
+	}
+	public static void main(String... args){
+		SV2 sV2 = new SV2();
+		System.out.println(SV.a);
+		add();
+	}
+	static void add(){
+		a++;
+		System.out.println(a);
+	}
+}
+
+class QuestionAboutStaticVariable{
+	public static void main(String... args){
+		for(int i=0;i < 10;i++){
+			SV sV = new SV();
+			if(i==9){
+				SV.add();
+			}
+		}
+		System.out.println(SV.a);
+		SV.add();
+	}
+}
+//而且在上面的例子中，for循环运行完，堆内存中是没有SV类的对象
+//但是属于类的静态实例变量a还在内存中，a的变化还在。
+//使用两个数组实现HashMap
+
+import test.Employee;
+import test.Manager;
+
+class MyHashMap{
+
+	static Object[] keyArray;
+	static Object[] valueArray;
+	
+	public static void main(String[] args){
+		keyArray = new Object[20];
+		valueArray = new Object[20];
+
+		Manager carl = new Manager("Carl Cracker", 80000, 1987, 12, 15);
+		Double salary = carl.getSalary();
+		HashMapInsert(carl,salary);
+		Employee Lina = new Employee("Lina", 67000,1993,4,12);
+		salary = Lina.getSalary();
+		HashMapInsert(Lina,salary);
+
+		//展示key
+		for(Object a:keyArray){
+			if(a!=null){
+				System.out.println(a+" ");
+			}
+		}
+		
+		//展示value
+		for(Object a:valueArray){
+			if(a!=null){
+				System.out.println((Double)a+" ");
+			}
+		}
+
+		//Employee Luis = new Employee2("Luis", 20000,1999,2,7);
+		//salary = Luis.getSalary();
+		//HashMapInsert(Luis,salary);
+		
+		carl = new Manager("Carl Cracker", 80000, 1987, 12, 15);
+		salary = carl.getSalary()+20000;
+		HashMapInsert(carl,salary);
+
+		//展示key
+		for(Object a:keyArray){
+			if(a!=null){
+				System.out.println(a+" ");
+			}
+		}
+		
+		//展示value
+		for(Object a:valueArray){
+			if(a!=null){
+				System.out.println((Double)a+" ");
+			}
+		}
+	}
+	
+	static void HashMapInsert(Object key,Object value){
+		int index = Math.abs(key.hashCode()%20);
+		if(keyArray[index]==null){
+			keyArray[index] = key;
+			valueArray[index] = value;
+		}else{
+			System.out.println(key+"存在，下面要把它替换掉");
+
+			keyArray[index] = key;
+			valueArray[index] = value;
+		}
+	}
+}import java.util.*;
+import java.io.*;
+
+class MyLinkedList{
+	double a;
+	MyLinkedList l;//用来指向链表的下一个元素
+}
+class MyLinkedListObject{
+	Object a;
+	MyLinkedListObject l;
+}
+class MyLinkedList2{
+	public static MyLinkedList main(String... args) throws Exception{
+			int a=Integer.parseInt(args[0]);
+
+			MyLinkedList tmp=null;
+			MyLinkedList head = null;
+			MyLinkedList p;
+
+			for(int i=0;i<a;i++){
+				int b=5;//in.nextInt();
+				p=new MyLinkedList();
+				p.a=b;
+				p.l=null;
+				if(tmp!=null){
+					tmp.l=p;}
+				if(head == null){
+					head=p;
+				}
+				tmp=p;
+			}
+
+/*
+				while(head!=null){
+				System.out.print(head.a+" ");
+				head = head.l;
+				}
+*/
+				return head;
+	}
+	public static MyLinkedList ForOut(String arg) throws Exception{//给外部使用
+		return main(arg);
+	}
+}import test.Employee;
+import test.Manager;
+class Employee2 extends Employee{
+	public Employee2(String name, double salary, int year, int month, int day){
+		     super(name, salary, year, month, day);
+	}
+		
+	public int hashCode(){
+		return 16;
+	}
+}
+
+class MyHashTable{
+	public static void main(String... args){
+		//把哈希函数（散列函数）返回值与数组的序号建立联系
+		//如果直接放到序号为哈希函数返回值的位置上 那要很大的函数
+		
+		double[] a = new double[21];
+		Employee alice = new Employee("Alice Adams", 75000, 1987, 12, 15);
+		Employee bob = new Employee("Bob Brandson", 50000, 1989, 10, 1);
+		Manager carl = new Manager("Carl Cracker", 80000, 1987, 12, 15);
+		Employee Jack = new Employee("Jack", 67000,1995,11,12);
+		Employee Lina = new Employee("Lina", 67000,1993,4,12);
+		Employee Luis = new Employee2("Luis", 20000,1999,2,7);
+
+
+		a[Math.abs(alice.hashCode()/100000000)] = alice.getSalary();
+		a[Math.abs(bob.hashCode()/100000000)] = bob.getSalary();
+		a[Math.abs(carl.hashCode()/100000000)] = carl.getSalary();
+
+		for(double b:a){
+			System.out.print(b+" ");
+		}
+		
+		System.out.println();
+	
+		//这里是哈希函数返回值除以数组长度取余 为了尽量让数组的每一个位置都有元素
+		double[] c = new double[20];
+		c[Math.abs(alice.hashCode()%20)] = alice.getSalary();
+		
+		if(Math.abs(bob.hashCode()%20)==0){
+			c[Math.abs(bob.hashCode()%20)] = bob.getSalary();
+		}
+
+		c[Math.abs(carl.hashCode()%20)] = carl.getSalary();
+		c[Math.abs(Jack.hashCode()%20)] = Jack.getSalary();
+		c[Math.abs(Lina.hashCode()%20)] = Lina.getSalary();
+		//c[Math.abs(Luis.hashCode()%20)] = Luis.getSalary();
+		//取余后，carl和Luis余数一样
+
+		//打印余数
+		System.out.println(Math.abs(alice.hashCode()%20));
+		System.out.println(Math.abs(bob.hashCode()%20));
+		System.out.println(Math.abs(carl.hashCode()%20));
+		System.out.println(Math.abs(Jack.hashCode()%20));
+		System.out.println(Math.abs(Lina.hashCode()%20));
+		System.out.println(Math.abs(Luis.hashCode()%20));
+
+		for(double b:c){
+			System.out.print(b+" ");
+		}
+
+		System.out.println();
+		c[Math.abs(Luis.hashCode()%20)] = Luis.getSalary();
+		for(double b:c){
+			System.out.print(b+" ");
+		}
+
+		//上面是使用散列函数+数组
+		//下边是使用散列函数+数组+链表
+
+		//应该要放到散列表的东西 求哈希函数返回值
+		//自己变成对象求哈希函数返回值 放对象的一个实例变量进去
+
+		System.out.println();
+		MyLinkedList[] d = new MyLinkedList[20];
+		hashTableInsert(d,Math.abs(Lina.hashCode()%20),Lina.getSalary());
+		hashTableInsert(d,Math.abs(carl.hashCode()%20),carl.getSalary());
+		listElenments(d);
+
+		hashTableInsert(d,Math.abs(Luis.hashCode()%20),Luis.getSalary());
+		System.out.println();
+		listElenments(d);
+
+		
+		//把对象放到哈希表里去
+		//而不是像上面一样 把对象的实例变量放进去
+		System.out.println();
+		MyLinkedListObject[] d2 = new MyLinkedListObject[20];
+		hashTableInsert(d2,Math.abs(Lina.hashCode()%20),Lina);
+		hashTableInsert(d2,Math.abs(carl.hashCode()%20),carl);
+		listElenments(d2);
+
+		hashTableInsert(d2,Math.abs(Luis.hashCode()%20),Luis);
+		System.out.println();
+		listElenments(d2);
+
+	}
+	public static void hashTableInsert(MyLinkedList[] d, int b,double c){
+		if(d[b]==null){
+			d[b] = new MyLinkedList();
+			d[b].a =c;
+		}
+		if(d[b]!=null){
+			MyLinkedList head = d[b];
+			while(head != null){
+				MyLinkedList tmp = head.l;
+				if(tmp == null){
+					break;
+				}
+				head=tmp;
+			}
+			head.l = new MyLinkedList();
+			head.l.a = c;
+		}	
+	}
+
+	//上面的方法的重载
+	//实际上只是把参数类型换成了Object
+	public static void hashTableInsert(MyLinkedListObject[] d, int b,Object c){
+		if(d[b]==null){
+			d[b] = new MyLinkedListObject();
+			d[b].a =c;
+		}
+		if(d[b]!=null){
+			MyLinkedListObject head = d[b];
+			while(head != null){
+				MyLinkedListObject tmp = head.l;
+				if(tmp == null){
+					break;
+				}
+				head=tmp;
+			}
+			head.l = new MyLinkedListObject();
+			head.l.a = c;
+		}	
+	}
+	public static void listElenments(MyLinkedList[] d){
+	    for(MyLinkedList a:d){
+		if(a!=null){
+			System.out.print(a.a+" ");
+				if(a.l==null){}
+				if(a.l!=null){
+					MyLinkedList head = a.l;
+					while(head != null){
+						System.out.print(head.a+" ");
+						MyLinkedList tmp = head.l;
+						head=tmp;
+					}
+				}
+		}
+		if(a==null){
+			System.out.print(0+" ");
+		}
+	    }
+	}
+
+	//上面的方法的重载
+	public static void listElenments(MyLinkedListObject[] d){
+	    for(MyLinkedListObject a:d){
+		if(a!=null){
+			System.out.print(a.a+" ");
+				if(a.l==null){}
+				if(a.l!=null){
+					MyLinkedListObject head = a.l;
+					while(head != null){
+						System.out.print(head.a+" ");
+						MyLinkedListObject tmp = head.l;
+						head=tmp;
+					}
+				}
+		}
+		if(a==null){
+			System.out.print(0+" ");
+		}
+	    }
+	}	
+	
+}
+//使用两个数组实现map
+//一个放key
+//另一个放value
+		
+		import test.Manager;
+import test.Employee;
+
+class EmployeeTest{
+	public static void main(String... args){
+		System.out.println(new Employee("Jack", 67000,1995,11,12).hashCode());
+		System.out.println(new Employee("Lina", 67000,1993,4,12).hashCode());
+	}
+}package test;
+
+public class Manager extends Employee
+{
+   private double bonus;
+
+   public Manager(String name, double salary, int year, int month, int day)
+   {
+      super(name, salary, year, month, day);
+      bonus = 0;
+   }
+
+   public double getSalary()
+   {
+      double baseSalary = super.getSalary();
+      return baseSalary + bonus;
+   }
+
+   public void setBonus(double bonus)
+   {
+      this.bonus = bonus;
+   }
+
+   public boolean equals(Object otherObject)
+   {
+      if (!super.equals(otherObject)) return false;
+      Manager other = (Manager) otherObject;
+      // super.equals checked that this and other belong to the same class
+      return bonus == other.bonus;
+   }
+
+   public int hashCode()
+   {
+      return java.util.Objects.hash(super.hashCode(), bonus);
+   }
+
+   public String toString()
+   {
+      return super.toString() + "[bonus=" + bonus + "]";
+   }
+}
+
+package test;
+
+/**
+ * This program demonstrates the equals method.
+ * @version 1.12 2012-01-26
+ * @author Cay Horstmann
+ */
+public class EqualsTest
+{
+   public static void main(String[] args)
+   {
+      Employee alice1 = new Employee("Alice Adams", 75000, 1987, 12, 15);
+      Employee alice2 = alice1;
+      Employee alice3 = new Employee("Alice Adams", 75000, 1987, 12, 15);
+      Employee bob = new Employee("Bob Brandson", 50000, 1989, 10, 1);
+
+      System.out.println("alice1 == alice2: " + (alice1 == alice2));
+
+      System.out.println("alice1 == alice3: " + (alice1 == alice3));
+
+      System.out.println("alice1.equals(alice3): " + alice1.equals(alice3));
+
+      System.out.println("alice1.equals(bob): " + alice1.equals(bob));
+
+      System.out.println("bob.toString(): " + bob);
+
+      Manager carl = new Manager("Carl Cracker", 80000, 1987, 12, 15);
+      Manager boss = new Manager("Carl Cracker", 80000, 1987, 12, 15);
+      boss.setBonus(5000);
+      System.out.println("boss.toString(): " + boss);
+      System.out.println("carl.equals(boss): " + carl.equals(boss));
+      System.out.println("alice1.hashCode(): " + alice1.hashCode());
+      System.out.println("alice3.hashCode(): " + alice3.hashCode());
+      System.out.println("bob.hashCode(): " + bob.hashCode());
+      System.out.println("carl.hashCode(): " + carl.hashCode());
+   }
+}package test;
+
+import java.time.*;
+import java.util.Objects;
+
+public class Employee
+{
+   private String name;
+   private double salary;
+   private LocalDate hireDay;
+
+   public Employee(String name, double salary, int year, int month, int day)
+   {
+      this.name = name;
+      this.salary = salary;
+      hireDay = LocalDate.of(year, month, day);
+   }
+
+   public String getName()
+   {
+      return name;
+   }
+
+   public double getSalary()
+   {
+      return salary;
+   }
+
+   public LocalDate getHireDay()
+   {
+      return hireDay;
+   }
+
+   public void raiseSalary(double byPercent)
+   {
+      double raise = salary * byPercent / 100;
+      salary += raise;
+   }
+
+   public boolean equals(Object otherObject)
+   {
+      // a quick test to see if the objects are identical
+      if (this == otherObject) return true;
+
+      // must return false if the explicit parameter is null
+      if (otherObject == null) return false;
+
+      // if the classes don't match, they can't be equal
+      if (getClass() != otherObject.getClass()) return false;
+
+      // now we know otherObject is a non-null Employee
+      Employee other = (Employee) otherObject;
+
+      // test whether the fields have identical values
+      return Objects.equals(name, other.name) && salary == other.salary && Objects.equals(hireDay, other.hireDay);
+   }
+
+   public int hashCode()
+   {
+      return Objects.hash(name, salary, hireDay); 
+   }
+
+   public String toString()
+   {
+      return getClass().getName() + "[name=" + name + ",salary=" + salary + ",hireDay=" + hireDay
+            + "]";
+   }
+}
+//列出全排列的情况
+
+import java.util.*;
+import java.io.*;
+
+class nnn{
+	public static void main(String... args){
+		try(Scanner in = new Scanner(System.in)){
+			int n = in.nextInt();
+			int[] a = core(n);
+			for(int b:a){
+				System.out.print(b+" ");
+			}
+		}
+	}
+	static int[] core(int n){
+		if(n==2){
+			int[] i = new int[jiecheng(n)];
+			int m = 0;
+			for(int a = 1;a<3;a++)
+				for(int b = 1;b<3;b++)
+					if(a!=b){
+						i[m] = 10*a+b;
+						m++;
+					}
+			return i;
+		}//把全排列数变成十进制数
+		//排列形式存到数组里时 用十进制存
+		if(n>2){
+			int[] i = core(n-1);//获得n-1个数全排列 是吧十进制形式存到数组中
+			int[] j =new int[jiecheng(n)];//用来放n个数全排列 十进制形式
+			int[] d = new int[n-1];//用来暂存一个排列形式 这个数组的各位用来暂存排列形式的各个位置的数
+			int m = 1;
+			int c = 0;
+				for(int a =0 ;a < i.length;a++){//i中的每个数
+					//System.out.println(i[a]+"m");//连同下面的println 是用来调试 断点调试
+					while(i[a]/10!=0){
+						//System.out.println(i[a]+"m");
+						//System.out.println(d.length-m);
+						//System.out.println(i[a]%10+"m");
+						d[d.length-m] = i[a]%10;
+						//System.out.println(d[d.length-m]);
+						i[a] = i[a]/10;
+						m++;
+						//System.out.println(m+"m");
+					}
+					d[d.length-m]=i[a];//上面连同这句 是把十进制数变成全排列数 排列形式
+								//下面在排列形式中插入新的数
+					//System.out.println(d[d.length-m]);
+					for(int b = 0;b <= d.length;b++){
+						int sum=0;
+						sum += n*chengyi(d.length-b);
+						for(int e = 0;e < d.length;e++){
+							int tmp = e<b?d[e]*chengyi(d.length-e):d[e]*chengyi(d.length-e-1);//三元操作符
+							sum += tmp;
+						}
+						j[c]=sum;//把全排列 排列形式变成十进制
+							//把插入新数后的排列形式 变成十进制数
+						//System.out.println(j[c]+"话");
+						c++;
+					}
+					m=1;//重点是这个 m=0也错了
+					//m重新变成1 重新从数组d的最后一位元素开始赋值 往前赋
+					//System.out.println(m+"m");
+				}
+			return j;//用来放n个数全排列 十进制形式
+		}
+		return new int[0];
+	}
+			
+	static int jiecheng(int n){//阶乘
+			if(n == 1)return 1;
+			if(n > 1){
+				int a = n*jiecheng(n-1);
+				return a;
+			}
+			return -1;
+			
+	}
+	static int chengyi(int n){//10的n次方
+		if(n ==1)return 10;
+		if(n > 1){
+			int a = 10*chengyi(n-1);
+			return a;
+		}
+		return 1;
+	}
+}
+//循环用递归换
+//循环套循环 循环层数不定 看能不能用递归换
+
+//上面也可以不把排列形式 变成 十进制数存到 数组里
+//直接把排列形式存到数组里
+//有n!个排列形式 每个排列形式占n位元素 需要长度为n*n!的数组 数组每n个元素存一个排列形式
+0到n-1是一个排列形式 除以n求余 是0到n-1 n到2n-1是一个排列形式 除以n求余 是0到n-1 用求余的方式取出排列形式
+
+class dddd{
+	public static void main(String[] args) {
+			int[] i = {1234,2134};//n-1个数全排列
+			int[] d = new int[4];
+			int m = 1;
+				for(int a =0 ;a < i.length;a++){//i中的每个数
+					while(i[a]/10!=0){
+						d[d.length-m] = i[a]%10;
+						System.out.println(d[d.length-m]);
+						i[a] = i[a]/10;
+						m++;
+					}
+					d[d.length-m]=i[a];
+					System.out.println(d[d.length-m]);
+					m=1;
+				}
+
+		
+	}
+}class MyStack2{
+
+//下面的tail应该换成top 表示栈顶
+//注释里的栈的末尾 应该换成 栈顶
+
+	static int tail=0;
+	static MyLinkedList l;
+	
+	public static void main(String... args) throws Exception{
+		l=MyLinkedList2.ForOut();//这个方法就会调用nextInt()用来确定要创建包含几个元素的链表 也就是包含几个元素的栈
+		
+			MyLinkedList lhead=l;
+			while(lhead!=null){
+				lhead = lhead.l;
+				tail++;
+			}
+			tail--;//让tail指向栈的最后一个元素，不减的话tail对应的是null
+
+		//栈末尾添加一个元素 值是8
+		System.out.println("在末尾加一个数8");
+		int a =8;
+		MyLinkedList n  = new MyLinkedList();
+		n.a=a;
+		n.l=null;
+		
+		//还需要原来的末尾元素指向这个新的末尾元素
+		lhead=l;
+		int head=0;
+		MyLinkedList tmp;
+		while(lhead!=null){
+			tmp=lhead.l;
+			if(head==tail){
+				break;//加这个是为了能用上面的lhead 而不是用下面的lhead
+			}
+			lhead = tmp;
+			head++;
+		}
+		lhead.l=n;
+		tail++;
+
+/*		//栈末尾删除一个元素
+		lhead=l;
+		head=0;
+		MyLinkedList tmp;
+		while(lhead!=null){
+			tmp=lhead.l;
+			if(head==tail){
+				break;//加一个是为了能用上面的lhead 而不是用下面的lhead
+			}
+			lhead = tmp;
+		}
+		lhead.l=...;//这里不行 要让链表末尾元素变成null lhead指向null (lhead=null) 但是原来和lhead指向同一个对象的引用变量 还是指着那个对象
+				//或者说倒数第二个元素的下一个“元素”是指null （lhead.l=null 这里lhead代表倒数第二个元素）
+
+		tail++;
+*/
+//上面的被注释掉了
+		System.out.println("之后再末尾删除三个数");
+		int tailtmp=tail;
+		tailtmp = repeat(tailtmp);
+		tailtmp = repeat(tailtmp);
+		tailtmp = repeat(tailtmp);//总共末尾减少三个数
+
+			lhead=l;
+			while(lhead!=null){
+				System.out.print(lhead.a+" ");
+				lhead = lhead.l;
+			}		
+	}
+
+	static int repeat(int tail){//运行一次 栈末尾减少一个元素
+		//栈末尾删除一个元素
+		MyLinkedList lhead=l;
+		int head=0;
+		MyLinkedList tmp;
+		while(lhead!=null){
+			tmp=lhead.l;
+			if(head==tail-1){
+				break;//加一个是为了能用上面的lhead 而不是用下面的lhead
+			}
+			lhead = tmp;
+			head++;
+		}
+		lhead.l=null;
+		tail--;
+	
+		return tail;
+	}
+}
+
+
+		
+
+
+
+			
+			import java.util.*;
+import java.io.*;
+
+class MyStack{
+//用链表实现栈不太合适
+//使用数组实现栈
+
+//下面的tail应该换成top 表示栈顶
+//注释里的栈的末尾 应该换成 栈顶
+	
+	static int[] a;
+	static int tail;//指示栈的末尾 后进先出 tail减到栈第一个元素之前的位置 这个位置咩有初始化
+	
+	public static void main(String... args) throws Exception{
+		try(Scanner in = new Scanner(System.in)){
+			int b = in.nextInt();
+			a=new int[b+1];//数组里有初始化的部分（有初始化的部分就是栈）的上一个元素，tail减到这时，完成遍历栈
+			
+			for(int i=1;i<a.length;i++){//数组有初始化的部分从序号1开始
+				a[i]=in.nextInt();
+			}
+			
+			tail=a.length-1;
+
+			
+			System.out.println("栈末尾添加一个元素");
+			//栈末尾添加一个元素
+			//数组数量翻倍
+			int[] c = new int[a.length*2];
+			for(int i = 0;i<a.length;i++){
+				c[i]=a[i];
+			}
+			a=c;
+			
+			int d = in.nextInt();
+			tail++;
+			a[tail]=d;
+
+			//栈末尾减少两个元素
+			tail--;//栈末尾减少一个元素
+			tail--;//栈末尾再减少一个元素
+
+			int e = tail;			
+			while(e!=0){//实际上是tail==0;这里是打印栈中的元素 并不是真的把栈的元素减少 所以把tail的值赋给另一个变量 用这个变量递减来访问栈的元素
+				System.out.print(a[e]+ " ");
+				e--;
+			}
+		}
+	}
+}
+				
+			
+			
+			//使用链表实现队列
+
+import java.util.*;
+
+class MyQueue{
+	static int head=0;
+	static int tail=0;
+	MyLinkedList l;
+
+	public static void main(String... args) throws Exception{
+		MyQueue myqueue = new MyQueue();
+		myqueue.l=MyLinkedList2.ForOut();
+
+		MyLinkedList lhead=myqueue.l;//lhead开始时时指向链表的第一个元素
+			while(lhead!=null){
+				lhead = lhead.l;
+				tail++;
+			}
+
+		System.out.println("在末尾加一个数8");
+		//Scanner in = new Scanner(System.in);
+		int a =8;//in.nextInt();
+		MyLinkedList n  = new MyLinkedList();
+		n.a=a;
+		n.l=null;
+		
+		//还需要原来的末尾元素指向这个新的末尾元素
+		lhead=myqueue.l;
+		MyLinkedList tmp;
+		while(head!=tail){
+			tmp=lhead.l;
+			if(head==tail-1){
+				break;//加一个是为了能用上面的lhead 而不是用下面的lhead
+			}
+			lhead = tmp;
+			head++;
+		}
+		lhead.l=n;
+		tail++;
+
+		head=0;
+		lhead=myqueue.l;
+		while(head!=tail){
+			System.out.print(lhead.a+" ");
+			lhead = lhead.l;
+			head++;
+		}
+		//队列增加元素的时候 队列末尾加一个元素 tail++
+		//队列减少元素的时候 队列开头减少一个元素 head++
+		//读会遍历数组元素的时候 把head 赋给一个变量 这个变量自加
+
+		//上面其实没有写出如何队列减少元素 只是遍历队列元素
+		//队列开头减少一个元素
+		System.out.println("队列开头减少一个元素");
+		head=0;
+		lhead=myqueue.l;
+		if(head!=tail){//把上面的while换成if
+			lhead = lhead.l;
+			myqueue.l = lhead;
+			head++;
+		}
+		
+		//遍历队列元素 确认是否减少一个元素
+		lhead=myqueue.l;
+		和上面比 没有重新把head变为0
+		while(head!=tail){
+			System.out.print(lhead.a+" ");
+			lhead = lhead.l;
+			head++;
+		}
+	}
+}class EventSource{
+
+	private Listener l;
+	private String name;
+
+	EventSource(String name){
+		this.name = name;
+	}//这个构造函数为了确定下面的this有没有起作用
+
+	public void echo(){
+		System.out.println("事件源是EventSource");
+		System.out.println("的"+name);
+	}
+	public void happen(){
+		System.out.println("事件发生");
+		invoke();
+	}
+	public void addListener(Listener l){
+		this.l = l;
+	}
+	public void invoke(){
+		System.out.println("调用事件监听接口实现类的方法");
+		l.performed(this);//亮点 this指这个对象
+	}
+}
+
+interface Listener{
+	void performed(EventSource es);
+}
+
+class OneListener implements Listener{
+	public void performed(EventSource es){
+		es.echo();
+		print();
+	}
+	public void print(){
+		System.out.println("监听器实现类对象的打印方法被调用了");
+	}
+}
+
+class Main{
+	public static void main(String...args){
+		EventSource es = new EventSource("kkk");
+		es.addListener(new OneListener());
+		es.happen();
+	}
+}
+//有时间源类
+//有监听器接口
+//有监听器接口实现类
+
+//这里事件是指事件源的一个方法，并不是一个类
+
+	//图解算法里的快排
+//感觉有问题
+
+//可能有问题
+//但是作为递归的练习是可以的
+
+//只写从小到大排
+
+class QuickSort2{
+	static int[] a = {0,110,3,457,1110,6,5,100,2,1,2000,0,8,9,10};
+
+	public static void main(String... args){
+		int[] b = quicksort(a);
+		for(int c:b){
+			System.out.print(c+ " ");
+		}
+	}
+
+	static int[] quicksort(int[] a){
+		int[] b = new int[a.length];//存比基准值大的数
+		int[] c = new int[a.length];//存比基准值小的数
+		int[] e = new int[a.length];//存基准值还有和基准值相等的数
+		int i=0;//记录上面数组b的元素个数
+		int j=0;//记录上面数组c的元素个数
+		int m=0;//记录上面数组e的元素个数
+		
+		if(a.length==0)return a;//java里数组长度可以为0
+		if(a.length==1)return a;
+		if(a.length==2){
+			if(a[0]<a[1])return a;
+			if(a[0]>a[1]){
+
+				int tmp;
+				tmp = a[1];
+				a[1] = a[0];
+				a[0] = tmp;
+				
+				return a;
+			}
+		}
+		if(a.length>2){
+		for(int d:a){
+			if(d > a[0]){
+				b[i]=d;
+				i++;
+			}
+			if(d < a[0]){
+				c[j]=d;
+				j++;
+			}
+			if(d == a[0]){
+				e[j]=d;
+				m++;
+			}
+		}
+		b=trueLength(b,i);
+		c=trueLength(c,j);
+		e=trueLength(e,m);
+		return arrayAppend(quicksort(c),e,quicksort(b));
+		}
+		return new int[0];//自己写的递归都会被编译器提醒这里要返回语句
+	}
+
+	static int[] arrayAppend(int[] a,int[] b,int[] c){
+		int e = a.length+b.length+c.length;
+		int[] d = new int[e];
+		int g = 0;
+		for(int f:a){
+			d[g] = f;
+			g++;
+		}
+		for(int f:b){
+			d[g] = f;
+			g++;
+		}
+		for(int f:c){
+			d[g] = f;
+			g++;
+		}
+		return d;
+	}
+
+	static int[] trueLength(int[] a,int b){
+		int[] c = new int[b];
+		for(int i=0;i<b;i++){
+			c[i] = a[i];
+		}
+		return c;
+	}
+}
+//如果上面是快排
+//那么平均时间复杂度还是近似O(NlogN)
+//快排部分 调用客栈层数是logN 每层要处理N个数 一开就要处理N个数 (quicksort(c),e,quicksort(b)) 时间上也是处理N个数
+//arrayAppend加上trueLength是2N
+//平均时间复杂度 logN 乘以 N+2N 是3NlogN?//图解算法里的快排
+//感觉有问题
+
+//可能有问题
+//但是作为递归的练习是可以的
+
+//只写从小到大排
+
+class QuickSort2{
+	static int[] a = {0,110,3,457,1110,6,5,100,2,1,2000,0,8,9,10};
+
+	public static void main(String... args){
+		int[] b = quicksort(a);
+		for(int c:b){
+			System.out.print(c+ " ");
+		}
+	}
+
+	static int[] quicksort(int[] a){
+		int[] b = new int[a.length];//存比基准值大的数
+		int[] c = new int[a.length];//存比基准值小的数
+		int[] e = new int[a.length];//存基准值还有和基准值相等的数
+		int i=0;//记录上面数组b的元素个数
+		int j=0;//记录上面数组c的元素个数
+		int m=0;//记录上面数组e的元素个数
+		
+		if(a.length==0)return a;//java里数组长度可以为0
+		if(a.length==1)return a;
+		if(a.length==2){
+			if(a[0]<a[1])return a;
+			if(a[0]>a[1]){
+
+				int tmp;
+				tmp = a[1];
+				a[1] = a[0];
+				a[0] = tmp;
+				
+				return a;
+			}
+		}
+		if(a.length>2){
+		for(int d:a){
+			if(d > a[0]){
+				b[i]=d;
+				i++;
+			}
+			if(d < a[0]){
+				c[j]=d;
+				j++;
+			}
+			if(d == a[0]){
+				e[j]=d;
+				m++;
+			}
+		}
+		b=trueLength(b,i);
+		c=trueLength(c,j);
+		e=trueLength(e,m);
+		return arrayAppend(quicksort(c),e,quicksort(b));
+		}
+		return new int[0];//自己写的递归都会被编译器提醒这里要返回语句
+	}
+
+	static int[] arrayAppend(int[] a,int[] b,int[] c){
+		int e = a.length+b.length+c.length;
+		int[] d = new int[e];
+		int g = 0;
+		for(int f:a){
+			d[g] = f;
+			g++;
+		}
+		for(int f:b){
+			d[g] = f;
+			g++;
+		}
+		for(int f:c){
+			d[g] = f;
+			g++;
+		}
+		return d;
+	}
+
+	static int[] trueLength(int[] a,int b){
+		int[] c = new int[b];
+		for(int i=0;i<b;i++){
+			c[i] = a[i];
+		}
+		return c;
+	}
+}class QuestionAboutArrayInit{
+	public static void main(String... args){
+		int[] a = new int[10];
+		for(int b:a)System.out.print(b+" ");
+		//会打印出一堆0 结论是如果数组元素没有初始化 会默认元素的值是0
+	}
+}import java.util.*;
+class ArrayTest{
+	public static void main(String[] args){
+	int a[] = new int[3];
+	a[0] = 1;
+	a[1] = 2;
+	a[2] = 3;
+	System.out.println(a);
+	ArrayList<Integer> b = new ArrayList<>();
+	for(int c: a)b.add(c);
+	System.out.println(b);
+	Integer d[] = new Integer[3];
+	d[0] = a[0];
+	d[1] = a[1];
+	d[2] = a[2];
+	ArrayList<Integer> e = new ArrayList<>();／／没右边的new，会说没初始化
+	Collections.addAll(e, d);//数组转ArrayList
+	System.out.println(e);
+	ArrayList<Integer> f = new ArrayList<>();
+	f.addAll(Arrays.asList(d));//数组转ArrayList
+	System.out.println(e);
+	}
+}
+
+//使用数组实现队列
+//head是队列的第一个元素 tail是队列末尾元素的下一个
+//或者说head数组的第一个元素 tail是数组有初始化部分下一个元素
+//也就是说用head遍历队列或数组时，head==tail时，tail位置是为初始化的
+
+import java.util.*;
+import java.io.*;
+
+class MyQueue2{
+	static int head;
+	static int tail;
+	static int[] queue;
+	public static void main(String... args) throws Exception{
+		System.out.println("队列元素长度：");
+		try(Scanner in = new Scanner(System.in)){
+			int a = in.nextInt();
+			queue=new int[a+1];//最开始的数组长度
+			head = 0;
+			tail = a;
+			
+			//给队列元素赋值
+		System.out.println("队列元素赋值：");
+			int b = head;
+			while(b!=tail){//实际上就是head!=tail
+				queue[b]=in.nextInt();
+				b++;
+			}
+			
+			//队列开头移除一个元素
+		System.out.println("队列移除开头一个元素：");
+			head++;
+
+			b=head;
+			while(b!=tail){//实际上就是head!=tail
+				System.out.print(queue[b]+" ");
+				b++;
+			}
+
+			//队列末尾添加一个元素
+			//先把数组容量翻倍
+			if(tail==queue.length-1){
+				int[] c = new int[queue.length*2];
+				for(int d = 0;d < queue.length;d++){
+					c[d] = queue[d];
+				}
+			queue=c;
+			}
+			
+			//末尾添加一个元素
+		System.out.println("队列末尾添加一个元素：");
+			queue[tail]=in.nextInt();
+			tail++;
+
+			b=head;
+			while(b!=tail){//实际上就是head!=tail
+				System.out.print(queue[b]+" ");
+				b++;
+			}
+		}
+	}
+}
+
+class BinarySearchRecursion{
+//二分搜索 递归版
+//基线条件 中间位置等于目标值
+//基线条件 终止递归的条件
+//可以是 返回一个不是由自身方法确定的数
+//在递归条件里不再调用自身方法
+
+static int[] a = {10,7,6,5,4,3,2,1};
+	public static void main(String... args){
+		int b = 5;//使用二分法找到元素3对应的序号
+		int c =binarySearchRecursion(a,b);
+		System.out.println(c);
+	}
+	static int binarySearchRecursion(int[] a,int b){
+		if((a[0]>b&&a[0]<=a[a.length-1])||(a[a.length-1]<b&&a[0]<=a[a.length-1])||(a[a.length-1]>b&&a[0]>=a[a.length-1])||(a[0]<b&&a[0]>=a[a.length-1]))
+		return -1;
+		if(a[0]==b)return 0;
+		if(a[a.length-1]==b)return a.length-1;
+		
+		int c = 0;
+		int d = a.length-1;
+		return binarySearchRecursionCore(c,d,b);
+	}
+	static int binarySearchRecursionCore(int c, int d, int b){
+		int mid = (c+d)/2;
+		if((a[c]<=a[d]&&a[mid]<b)||(a[c]>=a[d]&&a[mid]>b)){
+			return binarySearchRecursionCore(mid,d,b);
+		}
+		if((a[c]<=a[d]&&a[mid]>b)||(a[c]>=a[d]&&a[mid]<b)){
+			return binarySearchRecursionCore(c,mid,b);
+		}
+		if(a[mid]==b){
+			return mid;
+		}
+		return -1;	
+	}
+}
+	class Max{
+	public static void main(String... args){
+		int[] a= {1,2,9,3,34,55,3,44,5};
+		int b = max(a);
+		System.out.println(b);
+		b=max2(a);
+		System.out.println(b);
+		b=max3(a);
+		System.out.println(b);
+
+	}
+	static int max(int[] a){
+	if(a.length>1){
+		int b=a[0];
+		a=Sum.trim(a);
+		return b<max(a)?max(a):b;//三元操作符 1.关系符 2.？ 3.:
+		}
+	if(a.length<=1){
+		return a[0];
+	}
+	return 0;//这里会说缺少返回语句
+	}
+
+	static int max2(int[] a){
+	if(a.length>1){
+		int b=a[0];
+		a=Sum.trim(a);
+		if(b<max2(a))return max2(a);
+		 else return b;
+		}
+	if(a.length<=1){
+		return a[0];
+	}
+	return 0;//这里会说缺少返回语句
+	}
+
+	static int max3(int[] a){
+	if(a.length>1){
+		int b=a[0];
+		a=Sum.trim(a);
+		int max = b;
+		if(b<max3(a)){
+			max = max(a);
+		}
+		return max;//这个return要放if外,不然这一块有时候不输出最大值
+		}
+	if(a.length<=1){
+		return a[0];
+	}
+	return 0;//这里会说缺少返回语句
+	}
+}class Sum{
+	public static void main(String... args){
+		int[] a={1,2,3};
+		int b=sum(a);
+		System.out.println(b);
+	}
+	public static int sum(int[] a){
+		if(a.length>1){
+			int b=a[0];
+			a=trim(a);
+			return b+sum(a);
+		}
+		if(a.length<=1){
+			return a[0];
+		}
+		return 0;//没这句会说缺少返回语句
+	}
+	public static int[] trim(int[] a){
+		int[] b=new int[a.length-1];
+		for(int i=1;i<a.length;i++){
+			b[i-1]=a[i];
+		}
+		return b;
+	}
+}import java.util.*;
+import java.io.*;
+
+class MyLinkedList{
+	int a;
+	MyLinkedList l;//用来指向链表的下一个元素
+}
+class MyLinkedList2{
+	public static MyLinkedList main(String... args) throws Exception{
+		try(Scanner in = new Scanner(System.in)){
+			int a=in.nextInt();
+
+			MyLinkedList tmp=null;
+			MyLinkedList head = null;
+			MyLinkedList p;
+
+			for(int i=0;i<a;i++){
+				int b=in.nextInt();
+				p=new MyLinkedList();
+				p.a=b;
+				p.l=null;
+				if(tmp!=null){
+					tmp.l=p;}
+				if(head == null){
+					head=p;
+				}
+				tmp=p;
+			}//注意作用域 这些引用变量的作用域是这个语句块 这些对象没人指着就等着被回收吧
+			//注意一个对象有实例变量指着下一个对象，下一个对象有实例变量指着下下个对象...也就是对象都会被指着，不会被回收
+			//不过还要考虑作用域 p在语句块外 应该就不会被回收(p指向的对象在语句块里new的 但是不会被回收）
+			
+			//上面循环完，对象都还在，引用变量tmp指向倒数第二个对象（或者说元素)，p指向最后一个对象，head指向第一个对象。
+			//一个对象有实例变量指着下一个对象，下一个对象有实例变量指着下下个对象...也就是对象都会被指着，不会被回收
+
+			//语句块里对象一个指着一个，第一个对象有语句块外的head指着，不会都不会被回收
+
+/*
+				while(head!=null){
+				System.out.print(head.a+" ");
+				head = head.l;
+				}
+*/
+				return head;	
+		}
+	}
+	public static MyLinkedList ForOut() throws Exception{//给外部使用
+		return main("t");
+	}
+}
+//计划
+//用引用变量和new实现链表
+//用两个数组实现链表
+
+//用数组实现队列
+//用链表实现队列
+
+//用数组实现栈
+//能用链表实现栈吗？
+
+	//链表的另一种实现方式
+//使用两个数组
+//数组模拟
+
+import java.util.*;
+import java.io.*;
+
+class MyLinkedListAno{
+	static int[] a;//第一个数组存链表各个元素的值
+	static int[] b;//第二个数组纯某个元素的下一个元素的序号
+		//a[i]表示序号为i的链表元素
+		//b[i]表示元素a[i]的下一个元素的序号
+		//也就是 a[b[i]]表示a[i]的下一个元素
+	public static void main(String[] args) throws Exception{
+
+		try(Scanner in = new Scanner(System.in)){
+			int c = in.nextInt();
+			a = new int[c];//c个元素的链表
+			b = new int[c];
+
+			for(int i=0;i<c;i++){
+				a[i]=in.nextInt();
+			}
+
+			for(int i=0;i<c;i++){
+				if(i!=c-1){
+					b[i]=i+1;
+				}
+				if(i==c-1){
+					b[i]=-1;//b[c-1]==-1表示链表的没有下一个元素
+						//同样可以用两个数组实现循环链表
+						//这里b[c-1]=0就表示“最后一个元素”指向“第一个元素”
+				}
+			}
+
+			int[] e = new int[2*c];
+			for(int i =0;i<c;i++){//数组容量翻倍
+				e[i]=a[i];
+			}
+			a=e;//这样就还能使用原来的a[i];
+
+			int[] f = new int[2*c];
+			for(int i =0;i<c;i++){//数组容量翻倍
+				f[i]=b[i];
+			}
+			b=f;//这样就还能使用原来的b[i];
+
+/*
+			int d = in.nextInt();
+			a[c]=d;//这里c也是新的数组a中有初始化的部分的长度
+			
+			for(int i=0;i<=c;i++){//上面a[c]有赋值了 这里要i<=c
+				if(a[i]<d&&a[b[i]]>d){
+					b[c]=b[i];
+					b[i]=c;//在链表中插入一个元素，使上一个元素指向这一个元素，这一个元素指向下一个元素
+					//上面改变指向是核心
+					
+				}
+			}
+			int t=0;//用来表示初始序号
+			while(t!=-1){//前面的b[i]=0用来确定 没有下一个元素
+				//输出时需要用到b[i]
+				System.out.print(a[t]+ " ");
+				t=b[t];
+			}
+*/
+		insert(in.nextInt(),in);
+		}
+	}
+	static void insert(int n,Scanner in){//在原链表第n（序号，从0开始）个元素前（也就是n-1和n之间插入一个新的元素，形成新的第n个元素
+		int c=in.nextInt();//要插入的元素的值
+		
+		int i=0;
+		for(;i<a.length;i++){
+			if(a[i]==0){//这一步其实是不太对 为了获得新的数组中有初始化的部分的长度
+				break;
+			}
+		}
+		a[i]=c;
+		
+		int tt=0;
+		if(n==0){
+			tt=i;
+			b[i]=0;//新开头
+		}
+
+		if(n==i){
+			a[i]=c;
+
+			int t=0;
+			int m=0;
+			while(t!=-1){
+				m=t;//这一步是为了记录末尾的数的序号				
+				t=b[t];
+			}
+			b[m]=i;
+			b[i]=-1;//新末尾
+		}
+
+		if(n>0&&n<i){//下面不能用到数组a
+			int t=0;
+			int m=0;//访问的是第几个元素
+			while(t!=-1){
+				if(m==n-1){
+					b[i]=b[t];
+					b[t]=i;
+					break;
+				}
+				t=b[t];
+				m++;
+			}
+		}
+
+		int t=tt;//上面的加了新开头 这里要吧t的值变成新开头的序号
+		while(t!=-1){
+		System.out.print(a[t]+ " ");
+		t=b[t];
+			}
+
+	}			
+}
+//用两个数组实现链表
+//实际上还需要一个变量记录 起始元素的序号 因为起始元素的序号是会变的 比如插入一个新的开头元素
+//上面t开始时就是记录起始元素的序号，通过一个中间变量，把新的起始元素的序号传给t
+
+//使用数组实现链表 第一个数组记录元素的值 第二个 数组记录下一个元素的序号 这个序号是在数组上的序号
+//链表元素的序号（链表的第几个元素）和数组的序号没有直接关系
+//用一个变量记录链表第一个元素（开头）的序号 访问链表第一个元素 之后通过第二个数组获得获得链表第二个元素在数组上的序号
+
+//可以
+//使用两个数组实现链表
+//使用三个数组实现双向链表
+//使用两个数组实现循环链表
+//使用两个数组实现循环数组
+//使用循环数组实现队列
+ 
+					class ProblemAboutScope1110{
+	static int a;
+	public static void main(String... args){
+	int a = 1;//在这个方法里遮蔽掉了实例变量a
+	//这个方法里其他位置使用a，都是上面这个值
+	System.out.println(a);
+	//实际上System.out是个对象 而不是一个完整的类 这个方法是个方法
+	//已经new好的对象
+
+	go();
+	}
+	static void go(){
+		System.out.println(a);
+		//使用的是实例变量a的值
+	}
+}
+
+/*和上面内容无关 但是有必要把自己的想法记录的
+
+java里不同方法的参数的名称可以一样
+传给方法的变量的名称可以和方法参数的名称可以一样 或者说在一个方法里声明了一个局部变量，把这个局部变量传给另一个方法 这个局部变量的名称可以和方法的参数的名称一样
+
+一个方法里定义一个名称的局部变量，另一个方法可以再定义同一名称的局部变量
+局部变量的作用域只有所在的方法内
+
+方法内的可以声明和实例变量同类型同名的局部变量 声明后要在一个地方 初始化
+
+语句块里声明的变量作用范围只有语句块
+循环语句条件语句都是语句块
+
+语句块里定义变量 在语句块之后再定义同名同类型的变量 这样才行
+
+类名		AaaaBaaa Aaaaa 大大 大
+方法名		aaaaBaaa 小大 小？
+实例变量名		aaaaBaaa aaaa  小大 小
+*/
+
+class ClassForCompare{
+	String name;
+	int id;
+}
+class Compare{
+public static void main(String... args){
+	ClassForCompare o1 = new ClassForCompare();
+	o1.name="a";
+	o1.id=1;
+
+	ClassForCompare o2 = new ClassForCompare();
+	o2.name="d";
+	o2.id=4;
+	
+	ClassForCompare[] a = {o1,o2};
+
+	if(a[0].id<a[1].id){//比较id 但是交换的是对象
+		ClassForCompare tmp = a[1];
+		a[1]=a[0];
+		a[0]= tmp;
+	}
+		//上面3个式子
+		//tmp和a[1]指向同一个对象#1
+		//a[1]指向a[0]指向的对象#2，但是tmp还是指向#1
+		//a[0]指向tmp指向的对象#1，但是a[1]还是指向#2
+
+		//结果是a[0]指向#1,a[1]指向#2
+		//原来是a[0]指向#2,a[1]指向#1
+		//交换a[0]和a[1]的指向
+		
+/*
+int a[2]={1,2};
+int tmp = a[1];
+a[1] = a[0];
+a[0]=tmp;
+
+这里是把a[1]的值赋给tmp；
+把a[0]的值赋给a[1]；
+把a[0]的值赋给a[1]；
+把tmp的值赋给a[0];
+
+交换a[0]和a[1]的值
+*/
+	for(ClassForCompare o:a)System.out.print(o.name+" "+o.id+" ");
+
+	Main();
+
+}
+static void Main(){
+
+	ClassForCompare o1 = new ClassForCompare();
+	o1.name="a";
+	o1.id=1;
+
+	ClassForCompare o2 = new ClassForCompare();
+	o2.name="d";
+	o2.id=4;
+	
+	ClassForCompare[] b = {o1,o2};
+	int[] c={o1.id,o2.id};
+	String[] d = {o1.name,o2.name};//这里和上面一样，都可以吧.id、.name换成.getId()、.getName()
+
+/*
+用两个数组实现链表
+一个数组纪录链表元素的值
+另一个数组纪录下一个元素的序号
+*/
+	
+	if(c[0]<c[1]){
+		ClassForCompare Max = b[1];
+		String MaxString = d[1];
+		
+		System.out.println(Max.name+"aaa");
+		System.out.println(MaxString+"aaa");
+	}
+}
+
+}
+	
+
+	import java.io.FileInputStream;
+import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.Properties;
+
+class DirectorIoc{
+//这是第三方
+
+//IoC容器
+
+//控制反转
+//依赖注入
+
+//要传Actorduixiang给Film的方法
+//才能去调用Film的test方法
+
+//下面的内容要是换成普通的
+//new 一个Actor，new 一个 Film，然后把Actor传给Film的方法，之后调用Film的test方法
+//依然是第三方
+//控制反转
+//依赖注入
+
+就是我没有在Film里new了一个Actor
+而是在第三方里new了一个Actor
+
+下面的代码从配置文件中读出需要的类的类名
+
+
+    public static void main(String... arg) throws Exception{
+        Properties pro = new Properties();
+        try(InputStream in =new FileInputStream("setting")){
+            pro.load(in);
+
+            String actor=pro.getProperty("actor");
+            String film=pro.getProperty("film");
+
+            ClassLoader loader=Thread.currentThread().getContextClassLoader();
+
+            Class c1=loader.loadClass(actor);
+            Constructor cons=c1.getDeclaredConstructor((Class[])null);
+            Actor actor1=(Actor)cons.newInstance();
+
+            actor1.setName("yangweicheng");
+
+            Method setName=c1.getDeclaredMethod("setName",String.class);
+            setName.invoke(actor1,"ywc");
+
+            Class c2=loader.loadClass(film);
+            Constructor cons2=c2.getDeclaredConstructor((Class[])null);
+            Film film1=(Film)cons2.newInstance();
+
+            Method setActor = c2.getMethod("setActor",Actor.class);
+            setActor.invoke(film1,actor1);
+
+            film1.test();
+            Method test =c2.getDeclaredMethod("test");
+            test.invoke(film1,null);
+
+
+        }
+    }
+
+}public class Film{
+	private Actor actor;
+	public void setActor(Actor actor){
+		this.actor=actor;
+	}
+	public Actor getActor(){
+		return actor;
+	}
+	public void test(){
+		actor.list();
+		System.out.println(actor.getName());
+	}
+}
+	import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.util.Properties;
+
+public class pro {
+    public static void main(String... args) throws Exception {
+        Properties setting = new Properties();
+        setting.setProperty("film", "Film");
+        setting.setProperty("actor", "Actor");
+          try (OutputStream out = new FileOutputStream("setting")){
+            setting.store(out,"test");
+        }
+    }
+
+}
+class Actor{
+	private String name;
+	public void setName(String name){
+		this.name=name;
+	}
+	public String getName(){
+		return name;
+	}
+	public void list(){
+		System.out.println(name);
+	}
+}class SelectionSort{
+	static int[] trim(int[] a,int d){
+		int[] b=new int[a.length-1];
+		for(int c=0;c <a.length;c++){
+			if(c>d){
+				b[c-1]=a[c];
+			}
+			if(c<d){
+				b[c]=a[c];
+			}
+			if(c==d);
+			
+		}
+		return b;
+	}
+	//难点是上面
+	//把一个数组去掉一个元素，剩下的赋到另一个数组去
+	static int selectingForMax(int[] a){
+		int Max = a[0];
+		int MaxIndex=0;
+		for(int b=1;b<a.length;b++){
+			if(a[b]>Max){//比较数的大小
+				Max=a[b];//这个和另一个选择排序，自己都忘了这一句 把最大值改变了
+				MaxIndex=b;//但是返回索引
+			}
+		}
+		return MaxIndex;
+	}
+	static int[] quickSort(int[] a){
+		int[] c=a;
+		int[] d = new int[a.length];
+		int e;
+		int f = 0;
+		for(int b=0;b<a.length;b++){
+			e=selectingForMax(c);
+			System.out.print(c[e]+" ");
+			d[f]=c[e];
+			f++;
+			c=trim(c,e);
+		}
+		return d;
+	}
+	public static void main(String... args){
+		int[] a = {3,99,5,7,44,100,66,2,1,99,67,1,44,2,6,5,89,100,78};
+		int[] b =quickSort(a);//for(int c:b)System.out.print(c+" ");
+	}
+}
+		
+				
+			
+			class SelectionSort2{
+	static void selectionSort(int[] a){
+		int Max;
+		int tmp;
+		int MaxIndex;
+		for(int b=0;b<a.length;b++){
+			Max=a[b];
+			MaxIndex=b;
+			for(int c=b+1;c<a.length;c++){
+				if(a[c]>Max){//比数大小
+					Max=a[c];//这个和另一个选择排序，自己都忘了这一句 把最大值改变了
+					MaxIndex=c;//但是用序号
+				}
+			}
+			tmp=a[MaxIndex];
+			a[MaxIndex]=a[b];
+			a[b]=tmp;
+
+		}
+	}
+	public static void main(String[] args){
+		int[] a = {3,99,5,7,44,100,66,2,1,99,67,1,44,2,6,5,89,100,78};
+		selectionSort(a);
+		for(int c:a)System.out.print(c+" ");
+	}
+}
+					class QuickSort{
+	static int[]a = {0,110,3,457,1110,6,5,100,2,1,2000,0};//{0,10,9,8,7,6,5,4,3,2,1,0};
+	static int n;
+	static int h;
+	static int k,x;
+static void quickSort(int left,int right){
+	int i,j,t,temp,tmp2;
+
+	if(left>right)return;//虽然方法返回类型是void，但是这里用return来终止之后语句的执行
+	//这里终止语句，是为了停止下面的递归
+	//core java 第一卷末尾还是第二卷
+	//有好几处用到这种技巧
+/*
+return;停止方法之后内容的执行
+return;终止递归
+return null;
+return true;return false
+*/
+
+	
+	temp=a[left];
+	i=left;
+	j=right;
+	
+	while(i<j){
+ 	//while(i!=j){//
+		while(a[j]>=temp &&i<j)//为什么这个条件 也开始时就是 left<j 或者 i<right 不会超出要比较的块
+			j--;
+		while(a[i]<=temp &&i<j)//当i=j时，跳到下面i=j的部分
+			i++;
+		
+		if(i<j){//
+			t=a[i];
+			a[i]=a[j];
+			a[j]=t;
+		}
+	}
+	//下面运行的条件其实是i=j 上面while(i!=j)
+	//a[left]=a[i];
+	//a[i]=temp;
+
+	tmp2=a[i];
+	a[i]=a[left];
+	a[left]=tmp2;
+	//调试
+	System.out.println(temp);
+	list();
+	
+	h++;
+	System.out.println(h);
+
+	System.out.println(".....");
+	//调试
+	quickSort(left,i-1);
+	quickSort(i+1,right);
+
+}
+
+static void list(){
+	for(int b:a)System.out.print(b+" ");
+	System.out.println();
+}
+
+public static void main(String[] args){
+
+	k=1;
+	x=10;
+	quickSort(1,10);
+
+	for(int b:a)System.out.print(b+" ");
+}
+}
+/*
+上面的内容是把啊哈算法里的c语言程序翻译成java程序
+*/
+
+/*
+c语言里的数组 和 java里数组分析
+
+c语言里数组元素是个指针？
+
+java数组是个对象，数组元素不一定是
+使用引用变量指向一个数组对象
+通过引用变量操作数组的元素
+
+一个指向数组对象的引用变量改变了数组元素
+另一个指向同一数组的应用变量得到的是改变后的数组
+
+就像是通过指向一个对象的引用变量通过对象的方法（准确地说是引用变量的类型的方法，多态的原因）改变了对象的实例变量
+另一个指向同一个对象的引用变量得到的是实例变量改变后的对象
+
+多态
+父类引用 = 子类对象 父类引用指向子类对象 接口类=接口实现类对象
+
+父类引用.方法 这里的方法的是由引用的类型确定的
+
+所以父类引用.方法 里的方法是父类的方法或者是接口类的方法 子类继承来 也可以说是 父类和子类（接口类和实现类）共有的方法
+是父类的方法或者是接口类的方法 但是运行的内容是子类的方法内容 如果子类有覆盖 就按覆盖后的 子类没覆盖的话 父类方法和子类方法 内容是一样的 有没有覆盖都是子类的方法内容
+					（接口实现类的方法的内容）
+
+要通过引用使用子类特有的方法 要向下转型
+
+子类引用=(子类）父类引用
+
+*/
+
+/*
+
+c语言里的指针（go语言里的指针）与java里引用变量
+
+java引用变量 对象的内存位置
+
+*/
+
+/*
+
+c语言里址传递与java里值传递
+go里两种传递都有
+
+*/
+
+
+
+//使用和Comparable同样的功能
+//使用冒泡排序
+interface MyComparable{
+	boolean myComparable(MyComparable mc);
+}
+class TestObject implements MyComparable{
+	TestObject(String name,int id){
+		this.name = name;
+		this.id = id;
+	}
+
+	private String name;
+	private int id;
+
+	public String getName(){return name;}
+
+	public int getId(){return id;}
+
+	public boolean myComparable(MyComparable mc){
+		TestObject t =(TestObject)mc;
+		if(t.getId() > this.getId()){
+			return true;
+		}
+		return false;//要有这一行 不然if里是false时，就没有返回
+	}
+	
+	public static void main(String... args){
+
+		TestObject[] testsObject = {new TestObject("a",1),
+		new TestObject("a",1),
+		new TestObject("b",2),
+		new TestObject("c",3),
+		new TestObject("d",4)};
+		sort(testsObject);//使用排序 ，就这一句
+		for(TestObject t : testsObject){
+			System.out.print(t.getName()+" ");
+		}
+	}
+		
+	static void sort(TestObject[] t){
+		TestObject tmp;	
+		for(int i=0;i<t.length;i++){
+			for(int j=0; j< t.length-1;j++){
+				if(t[j].myComparable(t[j+1])){//接口用在这
+					tmp = t[j+1];
+					t[j+1] = t[j];
+					t[j] = tmp;
+				}
+			}
+		}
+	}
+}	
+		
+	
+class BubbleSort{
+
+	static int[] swap(int a,int b){
+		int tmp=a;
+		a=b;
+		b=tmp;
+		int[] array = {a,b};
+		return array;
+	}
+
+	static int[] bubbleSort(int[] a){
+	//数组是对象
+		int[] array;
+		for(int j = 1;j < a.length;j++){
+		//上面j从0开始或者从1开始都行
+			for(int i = 0;i < a.length-1;i++){
+		//上面j从0或者1开始 这里都可以a.length-1 就是比过了 再比
+		//上面j从0开始 这里就是a.length-1-j
+		//上面j从1开始 这里就是a.length-1-(j-1) 也就是a.length-j
+		//原因是第一趟拿到最小的数 第二躺拿到第二小的数 已经不用和最小的数比较 在第一趟时已经比较过来
+				if(a[i] < a[i+1]){
+					array = swap(a[i],a[i+1]);
+					a[i+1] = array[1];
+					a[i] = array[0];//小的排在后面
+				}
+			}//这个循环把一个数排到最后面
+		}//外层又从第一个开始看,此时第一个数可能不一样了
+		return a;
+	}
+
+	static int[] bubbleSortReverse(int[] a){
+	//数组是对象
+		int[] array;
+		for(int j = 0;j < a.length;j++){
+			for(int i = 0;i < a.length-1;i++){
+				if(a[i] > a[i+1]){
+					array = swap(a[i],a[i+1]);
+					a[i+1] = array[1];
+					a[i] = array[0];//小的排在后面
+				}
+			}//这个循环把一个数排到最后面
+		}//外层又从第一个开始看,此时第一个数可能不一样了
+		return a;
+	}
+	
+	public static void main(String[] args){
+		int[] array = {1,1,4,2,6,6,8,9,10,3,7,10};
+		int[] array2 = bubbleSort(array);
+		for(int a: array2){
+			System.out.print(a+" ");
+		}
+
+		System.out.println();
+
+		for(int a:array){
+			System.out.print(a+" ");//数组是对象
+			//但是数组元素不一定是对象
+		}
+
+		System.out.println();
+
+		array2 = bubbleSortReverse(array);
+		for(int a:array){
+			System.out.print(a+" ");//数组是对象
+			//但是数组元素不一定是对象
+
+		}
+	}
+}
+class ObjectForBubbleSort{
+//用冒泡排序 来排序对象 实质上排序对象中能排序的部分
+	String name;
+	int id;
+	ObjectForBubbleSort(String name,int id){
+		this.name = name;
+		this.id = id;
+	}
+	//也可以上封装 set get
+	public static void main(String... args){
+		ObjectForBubbleSort[] objectsForBubbleSort = {new ObjectForBubbleSort("a",1),
+		new ObjectForBubbleSort("a",1),
+		new ObjectForBubbleSort("b",2),
+		new ObjectForBubbleSort("c",3),
+		new ObjectForBubbleSort("d",4)};
+		ObjectForBubbleSort[] a = objectsForBubbleSort;//名字太长了，用短的
+		ObjectForBubbleSort tmp;
+		for(int i =0;i < 5;i++){
+			for(int j=0;j<4;j++){
+				if(a[j].id<a[j+1].id){
+				//用id比，但是交换的是整个对象
+					tmp = a[j];
+					a[j] = a[j+1];
+					a[j+1] = tmp;//改变了引用变量的指向
+				}
+			}
+		}
+		for(ObjectForBubbleSort b:a){
+			System.out.print(b.name+" ");
+		//想 Comparable 和 Comparator的例子
+		//可以自己实现Comparable 和 Comparator 指源码 实现和Comparable 或 Comparator一样的功能
+		}					
+	}
+}
+//算法和数据结构的学习
+//用java 的流做
+//或者用Go做
+
+
+class brewsort{
+//桶排序
+
+	public static void main(String[] args){
+		int[] num = new int[1000];
+		for(int a:num)a=0;
+			for(int a = 0;a < args.length; a++){
+				int b = Integer.parseInt(args[a]);
+				num[b]++;
+			}
+		for(int a = 0; a<1000; a++){
+			for(int i = 0; i < num[a]; i++)System.out.println(a);
+			//num[a]中a表示要排序的数，num[a]的值表示a出现的次数
+		}
+		//System.out.println(num[0]);
+		
+	}
+}
+class BinarySearch{
+	static boolean whichOrder(int[] array, int target){
+		if(array[array.length-1]>array[0] && (array[0] > target|array[array.length-1]<target)){
+			return false;
+		}
+		if(array[array.length-1]<array[0] && (array[0] <target|array[array.length-1]>target)){
+			return false;
+		}
+		return true;
+	}
+	static int binarySearch(int[] array, int target){
+		if(whichOrder(array, target)){
+
+				int low = 0;
+				int high = array.length-1;
+				boolean notGet = true;
+				int mid = (low+high)/2;
+
+				if(array[array.length-1]==target){
+					return array.length-1;
+				}
+				if(array[0] == target){
+					return 0;
+				}
+
+			if(array[array.length-1]>array[0]){
+				while(notGet){
+					if(array[mid]>target){
+						high = mid;这里换成mid-1也行
+					}
+					if(array[mid]==target){
+						return mid;
+					}
+					if(array[mid]<target){
+						low = mid+1;这里换成mid也行
+					}
+					mid = (low+high)/2;
+				}
+			}
+			if(array[array.length-1]<array[0]){
+				while(notGet){
+					if(array[mid]>target){
+						low = mid;
+					}
+					if(array[mid]==target){
+						return mid;
+					}
+					if(array[mid]<target){
+						high = mid+1;
+					}
+					mid = (low+high)/2;
+				}
+			}
+		}
+		return -1;
+	}//技巧：使用return 退出循环 使用return 使后面的语句不执行
+	public static void main(String[] args){
+		int[] a = {4,3,2,1};
+		int target =3 ;
+		int num = BinarySearch.binarySearch(a,target);
+		System.out.println(num+1);//确定是第几个数字 第一个数字就打印1
+		//这个程序至少有1个问题，数组中出现重复的数，只会返回第一个
+	}
+}
+
+			
+
+					
+			
+ 
+import java.util.*;
+class QuestionAboutNull{
+	public static void main(String... args){
+		List<String> a = new ArrayList<String>();
+		a.add(null);
+		if(a!=null)System.out.println("Not null");
+	}
+}
+
+import javax.sql.rowset.CachedRowSet;
+import javax.sql.rowset.RowSetFactory;
+import javax.sql.rowset.RowSetProvider;
+import java.sql.*;
+import java.util.Scanner;
+
+public class DBConnect1 {
+    public static void main(String... args) throws Exception{
+        Connection connection;
+        Statement statement;
+        //ResultSet resultSet;
+
+        Scanner in = new Scanner(System.in);
+
+        String url = "jdbc:postgresql:shop";//省略了本地路径也行"jdbc:postgresql://localhost:5432/shop";//端口好像不对，试了一下是对的，数据库名改成其他的就不行了，端口号改成其他的就不行了
+        String user = "eugeneyoung";//用户名改成其他的就不行了
+        String password = "";//设置了密码，但是用错误的密码还是能登入
+
+        Class.forName("org.postgresql.Driver");
+
+        connection =DriverManager.getConnection(url,user,password);
+        statement = connection.createStatement();
+
+        int num = 0;
+        while(in.hasNextLine()&&num<1){
+        num += statement.executeUpdate(in.nextLine());}
+        System.out.println(num);
+        System.out.println(".....");
+
+        String query = in.nextLine();
+        ResultSet resultSet1 = statement.executeQuery(query);
+        while(resultSet1.next())
+        System.out.println(resultSet1.getInt("id")+" "+resultSet1.getInt("num"));
+        resultSet1.close();
+        in.close();
+        System.out.println(".....");
+
+        //预备语句
+        String pre = "SELECT * FROM test WHERE num = ?";
+        PreparedStatement preparedStatement = connection.prepareStatement(pre);
+        preparedStatement.setInt(1,50);
+        ResultSet resultSet2= preparedStatement.executeQuery();
+        resultSet2.next();
+        System.out.println(resultSet2.getInt("id")+" "+resultSet2.getInt("num"));
+        resultSet2.close();
+        System.out.println(".....");
+
+        //SQL转义
+        ResultSet resultSet3=statement.executeQuery("SELECT {fn CURTIME()}");
+        while(resultSet3.next())
+        System.out.println(resultSet3.getTime(1));
+        resultSet2.close();
+        System.out.println(".....");
+
+        //多结果集
+        Statement statement2 = connection.createStatement();
+        boolean isResult = statement2.execute("SELECT * FROM test;SELECT id FROM test");
+        ResultSet resultSet4 = statement2.getResultSet();
+        resultSet4.next();
+        System.out.println(resultSet4.getInt(1));
+        resultSet4.close();
+
+        boolean isResult2 = statement2.getMoreResults();//这一行不能省，不然就得不到resultSet5
+        ResultSet resultSet5 = statement2.getResultSet();
+        resultSet5.next();
+        System.out.println(resultSet5.getInt(1));
+        System.out.println(".....");
+
+        //行集,也是一种结果集
+        ResultSet resultSet6=statement.executeQuery("SELECT * FROM test");
+        RowSetFactory factory = RowSetProvider.newFactory();
+        CachedRowSet crs = factory.createCachedRowSet();
+        crs.populate(resultSet6);
+        crs.next();
+        System.out.println(crs.getInt(1));
+        System.out.println(".....");
+
+        //结果集元数据
+        String columnName = crs.getMetaData().getColumnName(1);
+        System.out.println(columnName);
+
+        resultSet5.close();
+        System.out.println(".....");
+        statement2.close();
+
+
+        //resultSet.close();
+        statement.close();
+        connection.close();
+    }
+}
+//java -cp postgresql-42.2.5.jar:. DBConnect1
+//如果没有:. 会找不到DBConnect1
+//也就是说类路径用来找要运行的类的
+import java.util.*;
+import java.io.*;
+
+class HasNextLineTest{
+
+	static String text;
+
+	public static void main(String[] args) throws Exception{
+		Scanner in = new Scanner(new File("textForHasNextLineTest"));
+		while(in.hasNextLine())text=in.nextLine();
+		System.out.println(text);
+		in.close();
+
+		in=new Scanner(System.in);//从屏幕读，如果没有自己加一个终止条件，会一直执行，一直在while循环中，等待输入，输入完回车后，还是等待输入
+
+		boolean bl =true;
+		while(in.hasNextLine()&&bl){text=in.nextLine();if(text.equals("0"))bl=false;}
+		//当输入终止条件后，要再输入一行，才会跳出while循环。有in.hasNextLine()在，就要再输入一行
+		System.out.println(text);
+		//in.close();
+		//in.hasNextLine();//有in.hasNextLine()在，就要再输入一行 这句话待定
+		while(in.hasNextLine());//只有这句话在就会等待输入，输入后回车，还是继续等待输入
+	}
+}
+class err{
+	public static void main(String[] args){
+		System.out.println(args[0]);
+	}
+}
+//java -Duser.language=zh -Duser.region=CN err
+import java.io.Console;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.util.Properties;
+import java.util.Scanner;
+import javax.mail.internet.*;
+import javax.mail.internet.MimeMessage.RecipientType;
+import javax.mail.*;
+
+public class MailTest {
+    public static void main(String... arg) throws Exception{
+        Properties pro = new Properties();
+        try(InputStream in =new FileInputStream("setting")){
+            pro.load(in);
+        }
+        String from;
+        String to;
+        String sub;
+
+        Scanner sc = new Scanner(System.in);
+        from = sc.nextLine();
+        to = sc.nextLine();
+        sub = sc.nextLine();
+	String password = sc.nextLine();
+        sc.close();
+
+        //Console console = System.console();
+        //String password = new String(console.readPassword("password"));
+
+        Session s = Session.getDefaultInstance(pro);
+	s.setDebug(true);//没加这句运行成功没有显示，有异常却会抛出
+	//
+	MimeMessage m = new MimeMessage(s);
+	m.setFrom(new InternetAddress(from)); 
+	m.addRecipient(RecipientType.TO, new InternetAddress(to)); 
+	m.setSubject(sub);
+	m.setText("test");
+	Transport tr = s.getTransport();
+	try{
+		tr.connect(null,password);
+		tr.sendMessage(m,m.getAllRecipients());
+	}finally{
+		tr.close();
+	}
+    }
+}
+//运行时加下面这个
+//但是自己编译时没加
+//java eugeneyoung$ java -classpath javax.mail.jar:. --add-modules java.activation MailTest
+
+//编译时javac -classpath javax.mail.jar:. MailTest.java
+
+//要开启谷歌的
+//更改安全性较低的应用的账号访问权限
+
+//发给qq和icloud都成功了
+import java.io.FileOutputStream;
+import java.io.OutputStream;
+import java.util.Properties;
+
+public class pro {
+    public static void main(String... args) throws Exception {
+        Properties setting = new Properties();
+        setting.setProperty("mail.transport.protocol", "smtps");
+        setting.setProperty("mail.smtps.auth", "true");
+        setting.setProperty("smtps.user", "ywcjxf1515@gmail.com");
+        try (OutputStream out = new FileOutputStream("setting")){
+            setting.store(out,"test");
+        }
+    }
+
+}
+import java.net.*;
+class HostAddress{
+	public static void main(String[] args) throws Exception{
+		System.out.println(new String(InetAddress.getByName("www.horstmann.com").getHostAddress()));
+	}
+}
+import java.io.*;
+import java.net.*;
+import java.util.*;
+public class TelnetSocket{
+	public static void main(String... args){
+		try(Socket s = new Socket("time-a.nist.gov",13);
+			Scanner in = new Scanner(s.getInputStream())){
+				while(in.hasNextLine()){
+					System.out.println(in.nextLine());
+				}
+			}catch(Exception e){System.out.println("ex");}
+	}
+}
+import java.io.*;
+import java.util.*;
+
+class ScannerAndPrinterWriter{
+    public static void main(String[] args){
+        String a = new Scanner(System.in).nextLine();
+        String b="1";
+        try(Scanner in = new Scanner(new FileInputStream("ScannerAndPrinterWriter.txt")))
+        {if(in.hasNext())b=in.next();}
+	catch(Exception e){System.out.println("not found");}
+        System.out.println(a);
+        try(PrintWriter out=new PrintWriter("PrinterWriter.txt"))
+        {out.print(b);}
+	catch(Exception e){}
+    }
+}
+	
+
+import java.util.*;
+class localtest{
+	static{
+		System.out.println(Locale.getDefault().getDisplayName());
+	}
+	public static void main(String... args){}
+}
+import java.util.function.*;
+class LambdaFunctionInteface{
+	public static void repeat(int n, IntConsumer action){
+		for(int i = 0; i < n; i++){
+			action.accept(i);//这里的i是实参
+			if(i == n-1)
+				System.out.println(".....");
+		}
+	}
+	public static void repeat(IntConsumer action){
+		for(int i = 0; i < n; i++){
+			action.accept(i);
+			if(i == n-1)
+				System.out.println(".....");
+		}
+	}
+	public static void main(String... args){
+		IntConsumer a = (i) -> System.out.println(i);//这里的i是形参，用来定义方法
+		repeat(10,a);
+		repeat(10,i -> System.out.println(i));
+		repeat(a);
+		repeat((i) -> System.out.println(i));//作为方法参数的对象的方法（lambda）放进去
+	}
+}
+class Constructor1015{
+	Constructor1015(){
+		System.out.println("a");
+	}
+}
+class Constructor2 extends Constructor1015{
+	Constructor2(String a){
+		System.out.println(a);
+	}
+	public static void main(String[] args){
+		new Constructor2("b");
+	}
+}
+class IfAndTest{
+	void go(String s){
+		if(s.equals("s"))System.out.println("s.....");
+	}
+	void go(IfAnd a){a.go("s");}
+	void go(IfAnd a, String b){a.go(b);}
+	public static void main(String[] args){
+		new IfAndTest().go("s");
+		new IfAndTest().go(new IfAndExtend());
+		new IfAndTest().go(new IfAndExtend(),"s,,,");
+		
+	}
+}
+class IfAnd{
+	void go(String a){}
+	}
+class IfAndExtend extends IfAnd{
+	void go(String a){
+		System.out.println(a);
+	}
+}
+//有几个不同的子类，方法的参数可以一样，但是方法体不一样
+//或者说类名和方法体不一样
+class myArraylist{
+	public static void main(String[] args){
+		System.out.println("a");
+	}
+}
+	 
+class QuestionAboutConstructor{
+	int a;
+	QuestionAboutConstructor(){
+		 setA(2);
+		a = getA(1);
+	}
+	void setA(int a){
+		this.a =a;
+	}
+	int getA(){
+		return a;
+	}
+	int getA(int a){
+		return a;
+	}
+	public static void main(String[] args){
+		System.out.println(new QuestionAboutConstructor().a);
+	}
+} 
+class Foo{}
+class Foo2 extends Foo{}
+class Foo3{}
+class Pair<T>{
+	private T first;
+	private T second;
+	Pair(T first, T second){
+		this.first = first;
+		this.second = second;
+	}
+	T getfirst(){
+		return first;
+	}
+	T getsecond(){
+		return second;
+	}
+	
+}
+class PairTest{
+	static <T extends Foo> void S1(Pair<T> p){
+		T a = p.getfirst();
+		T b = p.getsecond();
+		System.out.println(a);
+		System.out.println(b);
+		
+	} 
+	static void S2(Pair<? extends Foo> p){
+		Object a = p.getfirst();
+		Object b = p.getsecond();
+		System.out.println(a);
+		System.out.println(b);
+	}
+	public static void main(String... args){
+		Pair<Foo> a1 = new Pair<Foo>(new Foo(),new Foo());
+		Pair<Foo2> b1 = new Pair<Foo2>(new Foo2(),new Foo2());
+		S1(a1);
+		S1(b1);
+		S2(a1);
+		S2(b1);
+		Pair<Foo3> c3 = new Pair<Foo3>(new Foo3(),new Foo3());
+		S2(c3);
+		}
+}
+
+/*
+bogon:java eugeneyoung$ javac generics1004.java
+S1(c3)
+generics1004.java:41: 错误: 无法将类 PairTest中的方法 S1应用到给定类型;
+		S1(c3);
+		^
+  需要: Pair<T>
+  找到: Pair<Foo3>
+  原因: 推论变量 T 具有不兼容的限制范围
+    等式约束条件: Foo3
+    上限: Foo
+  其中, T是类型变量:
+    T扩展已在方法 <T>S1(Pair<T>)中声明的Foo
+1 个错误
+
+
+bogon:java eugeneyoung$ open generics1004.java
+bogon:java eugeneyoung$ javac generics1004.java
+generics1004.java:41: 错误: 不兼容的类型: Pair<Foo3>无法转换为Pair<? extends Foo>
+		S2(c3);
+		   ^
+注: 某些消息已经过简化; 请使用 -Xdiags:verbose 重新编译以获得完整输出
+1 个错误
+bogon:java eugeneyoung$ javac -Xdiags:verbose generics1004.java
+generics1004.java:41: 错误: 无法将类 PairTest中的方法 S2应用到给定类型;
+		S2(c3);
+		^
+  需要: Pair<? extends Foo>
+  找到: Pair<Foo3>
+  原因: 参数不匹配; Pair<Foo3>无法转换为Pair<? extends Foo>
+1 个错误
+*/
+	
+
+interface InterfaceMethodTest{
+	String toString();
+}
+class InterfaceMethodTest2 implements InterfaceMethodTest{
+		public String toString(){
+		return "a";
+	}
+	public static void main(String[] args){
+		System.out.println(new InterfaceMethodTest2().toString());
+		InterfaceMethodTest2 a = new InterfaceMethodTest2();
+		Object b = a;
+		System.out.println(b.toString());
+	}
+}
+interface InterfaceStaticMethodTest{
+	static int go(){
+		return 1;
+	}
+}
+class InterfaceStaticMethodTest2 implements InterfaceStaticMethodTest{
+	public static void main(String[] args){
+		System.out.println(InterfaceStaticMethodTest2.go());
+	}
+}	
+class type_eraser{
+	class element{
+		void run(){
+			System.out.println("ohmycode");
+		}
+	}
+	class element2{}
+	class element3{}
+	<T> T go(T t){
+	//传进去什么类型的引用，就传出什么类型的引用
+	//所以这一句正确的用了泛型？
+	//Object go(Object t)这样会说不能把Object给element
+		return t;
+	}
+	element go2(element f){
+		return f;
+	}
+	element inner_instance(){
+		return new element();
+	}
+	public static void main(String[] args){
+		type_eraser a = new type_eraser();
+		element b = a.inner_instance();//如果直接element b = new type_eraser(); 会说静态上下文引用非静态
+		element d = a.new element();//这样就行 head first java 378页
+		type_eraser.element e =  a.new element();//这样也行
+		element c = a.go2(e);
+		element g = a.go(e);
+		c.run();
+		g.run();
+		element3 h = a.new element3();
+		System.out.println((a.go(a.new element2())).getClass());
+		System.out.println((a.go(h)).getClass());
+	}
+}
+class StaticTest{
+	static void go(){
+		System.out.println("a");
+	}
+}
+class StaticTest2 extends StaticTest{
+	public static void main(String[] args){
+		StaticTest2.go();//父类的静态方法继承了
+}
+}
+class StaticTest3 extends StaticTest2{
+//父类的main方法继承了
+}class protectTest1{
+	protected int a = 4;
+	}
+class protectTest2 extends protectTest1{
+	public int b = 1;
+	public static void main(String[] args){
+		protectTest2 a = new protectTest2();
+		System.out.println(a.a+a.b);
+	}
+}
+class protectTest3 extends protectTest2{
+	public static void mian(String[] args){
+		protectTest3 a = new protectTest3();
+		System.out.println(a.a+a.b);
+	}
+}
+	
+	
+public class ConstructorTest{
+	public ConstructorTest(){
+		System.out.println("a");
+		System.out.println("father1");
+		System.out.println("-----");
+	}
+	public ConstructorTest(String a){
+		System.out.println(a);
+		System.out.println("father2");
+		System.out.println("-----");
+	}
+}
+class childTest	extends ConstructorTest{
+	public childTest(){
+		System.out.println("child1");
+	}
+	public static void main(String[] args){
+		new childTest();
+	}
+
+}
+import java.util.*;
+class jsp{
+	Object go2(){
+		ArrayList<String> k = new ArrayList<String>();
+		k.add("a");
+		k.add("b");
+		return k;
+	}
+	public static void main(String[] args){
+		
+		jsp a = new jsp();
+		//List<String> styles =(List<String>)(a.go2());
+		List<String> styles =(List)(a.go2());
+			//Iterator it = styles.iterator();
+			//while(it.hasNext()){
+			//System.out.println("<br>"+it.next());
+			for(String c:styles)System.out.println("<br>"+c);
+			
+	}
+}
+/*bogon:java eugeneyoung$ javac -Xlint:unchecked jsp.java
+jsp.java:13: 警告: [unchecked] 未经检查的转换
+		List<String> styles =(List<String>)(a.go2());
+		                                   ^
+  需要: List<String>
+  找到:    Object
+1 个警告
+bogon:java eugeneyoung$ javac -Xlint:unchecked jsp.java
+jsp.java:13: 警告: [unchecked] 未经检查的转换
+		List<String> styles =(List)(a.go2());
+		                     ^
+  需要: List<String>
+  找到:    List
+1 个警告
+*/class Bianyi{
+//测试还要不要手动编译另一个文件
+	 public static void main(String[] args){
+		Bianyi2 bianyi2 = new Bianyi2();
+		bianyi2.go();
+	}
+}
+class Bianyi2{
+	void go(){
+		System.out.println("Test");
+	}
+}
+class questionaboutthis{
+	static void go(){
+		System.out.println("a");
+		System.out.println("go()");
+	}
+	 void go(int a){
+		//重载
+		this.go();
+		System.out.println("go(int a)");
+	}
+	 void go(String a){
+		int b = 1;
+		go(b);
+		System.out.println("go(String a)");
+	}
+	//static void go2(){
+		//go2();}迭代？但是停止条件
+	public static void main(String[] args){
+		questionaboutthis q = new questionaboutthis();
+		q.go();
+		int a = 1;
+		q.go(a);
+		String b = "a";
+		q.go(b);
+	}
+}
+import java.util.*;
+class MyPrint{
+	public static void main(String[] args){
+		//ArrayList<String> a = new ArrayList();
+		ArrayList<String> a = new ArrayList<String>();
+		ArrayList b = new ArrayList<String>();
+		a.add("a");
+		a.add("b");
+		System.out.println(a);//直接打印会是[]里有数组元素，即[a,b]
+		for(String c: a){
+			System.out.println(c);
+		}
+	}
+}
+class xiaoshu{
+//小数：宽度
+	public static void main(String[] args){
+		double a = 3.3333;
+		System.out.printf("%,6.3f\n",a);//实际上格式化，成字符输出
+		System.out.printf("%,7.4f\n",a);//实际上格式化，成字符输出
+		System.out.printf("%,7.3f\n",a);//实际上格式化，成字符输出
+/*
+* 3.333
+* 3.3333
+*  3.333
+*小数点占一位宽度，\0占一个宽度
+*/
+	}
+}
+import javafx.application.Application;import javafx.event.ActionEvent;import javafx.event.EventHandler;import javafx.scene.Group;import javafx.scene.Scene;import javafx.scene.control.Button;import javafx.stage.Stage;/** * A JavaFX Hello World Application */public class HelloWorld extends Application {    /**     * @param args the command line arguments     */    public static void main(String[] args) {        Application.launch(args);}    @Override    public void start(Stage stage) {        stage.setTitle("Hello World");        Group root = new Group();        Scene scene = new Scene(root, 300, 250);        Button btn = new Button();        btn.setLayoutX(100);        btn.setLayoutY(80);        btn.setText("Hello World");        btn.setOnAction(new EventHandler<ActionEvent>() {            public void handle(ActionEvent event) {                System.out.println("Hello World");} });        root.getChildren().add(btn);        stage.setScene(scene);        stage.show();} }import java.util.*;
+public class generic <E> {
+    public Set<String> getSet() {
+        return new HashSet<String>();
+    }
+public static void main(String[] args) {
+        generic stringGeneric = new generic();
+	System.out.println(stringGeneric.getClass());
+        Set<String> stringSet = stringGeneric.getSet();
+        Set<String> stringSet2 = new HashSet();
+	System.out.println(stringSet.getClass());
+        for(String aaa : stringSet) {
+            System.out.println(aaa);
+        }
+    }
+}
+import java.util.*;//又一次忘记导入包，没导入包会说找不到类
+class question {
+	public static void main(String[] args){
+		ArrayList friends = new ArrayList();//java5以后这种写法就不行了，需要<>。与泛型相关
+		//接上面，是警告，还能编译出class文件
+	}
+}
+class type_eraser{
+	class element{
+		void run(){
+			System.out.println("ohmycode");
+		}
+	}
+	class element2{}
+	class element3{}
+	<T> T go(T t){
+	//传进去什么类型的引用，就传出什么类型的引用
+	//所以这一句正确的用了泛型？
+	//Object go(Object t)这样会说不能把Object给element
+		return t;
+	}
+	element go2(element f){
+		return f;
+	}
+	element inner_instance(){
+		return new element();
+	}
+	public static void main(String[] args){
+		type_eraser a = new type_eraser();
+		element b = a.inner_instance();//如果直接alement b = new type_eraser(); 会说静态上下文引用非静态
+		element d = a.new element();//这样就行 head first java 378页
+		type_eraser.element e =  a.new element();//这样也行
+		element c = a.go2(e);
+		element g = a.go(e);
+		c.run();
+		g.run();
+		element3 h = a.new element3();
+		System.out.println((a.go(a.new element2())).getClass());
+		System.out.println((a.go(h)).getClass());
+	}
+}
+class zhuangxing{
+	//向上转型疑问
+	void go(){
+		System.out.println("Yesssss...");
+	}
+}
+class zhuanxingTest{
+	Object run(){
+		return new zhuangxing();
+	}
+	public static void main(String[] args){
+		((zhuangxing)(new zhuanxingTest().run())).go();//new zhuanxingTest().run().go()这个会说Object没有go()法
+	}
+}	
+import java.util.*;//又一次忘记导入包，没导入包会说找不到类
+class question {
+	public static void main(String[] args){
+		ArrayList friends = new ArrayList();//java5以后这种写法就不行了，需要<>。与泛型相关
+		//接上面，是警告，还能编译出class文件
+		Integer a = 2;
+		friends.add(a);
+		friends.add(1);
+		System.out.println(friends);
+	}
+}
+class zhihu{
+	static int a;
+	static int b;
+	public static void main(String[] args){
+		for(int i = 2; i <= 100; i++){
+			//先从i<=20试，即从小的试
+			if(i > 2 &&( i % 2 ==0)){
+				//System.out.println(i);
+				continue;
+			}
+			//System.out.println(i);
+			for(int j = 2; j <= i; j++){
+				a = j;
+				if(i%j ==0){
+					break;
+				}
+			}
+			if(a == i){
+				System.out.print(a+ " ");
+			}
+		}
+	}
+}
+			
+			
+class chengfaTest{
+	public static void main(String[] args){
+		for(int a = 1; a < 10; a++){
+			for(int b = 1; b <= a; b++){
+				System.out.print(b+"*"+a);
+				int c = chengfa.chengfa1(a,b);
+				System.out.print("=" + c + " ");
+				if(b == a){
+					System.out.println();
+				}
+			}
+		}
+	}
+}
+class chengfa{
+	static int chengfa1(int i, int j){
+		return i*j;
+	}
+	public static void main(String[] args){
+		int x;
+		x = chengfa.chengfa1(3,3);
+		System.out.print(x);
+	}
+}	
+		
+class Test{
+	int a;
+	void go(int a){
+		System.out.println(a);//拷了一份值给a，在这个方法内a的值以方法内赋的值为准
+
+	}
+	void go2(){
+		System.out.println(a);
+	}
+	void go3(){
+		int a = 2;
+		System.out.println(a);//在这个方法内a的值以方法内赋的值为准
+	}
+	void go4(){
+		if(a == 2){
+			System.out.println("go4():a = "+a);
+		}
+	}
+	public static void main(String[] args){
+		Test b = new Test();
+		b.go(1);
+		b.go2();
+		System.out.println(b.a);
+		b.go3();
+		System.out.println(b.a);
+		b.go4();
+	}
+}
+interface a {
+	void go();
+}
+class Myinnnertest{
+	static void go(){
+		abstract class m implements a{}
+		new m(){
+			public void go(){
+				System.out.println("run");//这一部分会有个继承关系，new m()，有个继承m的类
+			}
+		}.go();
+	}	
+	public static void main(String[] args){
+		Myinnnertest.go();
+	}
+}	
+interface a {
+	void go();
+}
+class Myinnnertest3{
+	static void go(){
+		abstract class m implements a{}
+	}	
+	public static void main(String[] args){
+		Myinnnertest3.go();
+	}
+}	
+interface a {
+	void go();
+}
+class Myinnnertest2{
+	static void go(){
+		new a(){
+			public void go(){
+				System.out.println("run");
+			}
+		}.go();
+	}	
+	public static void main(String[] args){
+		Myinnnertest.go();
+	}
+}	
+interface a {
+	void go();
+}
+class Myinnnertest{
+	static void go(){
+		abstract class m implements a{}
+		new m(){
+			public void go(){
+				System.out.println("run");
+			}
+		}.go();
+	}	
+	public static void main(String[] args){
+		Myinnnertest.go();
+	}
+}	
+class fuhaowei{
+	public static void main(String[] args){
+		int x = -5;
+		int y = x<<2;
+		System.out.println(y);
+		String a = "j";
+		String b = "b";
+		System.out.println(a+b);
+		System.out.println("o"+"K");
+		a+="b";
+		System.out.println(a);
+	}
+}
+import java.util.*;
+class Animal{}
+class Dog extends Animal{}
+class duaotaiandfanxing2Test{
+	public static void main(String[] args){
+		ArrayList<Animal> dogs1 = new ArrayList<Dog>();
+	}
+}
+class nameandscope2{
+	void go(int s){
+		System.out.println("s = " + s);
+		s++;
+		System.out.println("s = " + s);
+	}
+	void go2(int a){
+		a++;//上面的int a更像是方法体的第一行
+		System.out.println("a = " + a);
+	}
+	public static void main(String[] args){
+		nameandscope2 a = new nameandscope2();
+		int s = 1;
+		a.go2(s);
+		System.out.println("--------------");
+		System.out.println("s = " + s);
+		a.go(s);
+		System.out.println("s = " + s);
+
+	}
+}
+/*
+*go(){
+*	int s = 1;
+*		{int s = 1}
+*}这样不行
+*go(){
+*		{int s = 1}
+*	int s =1;
+*}这样就行
+*/
+class MyProblem {
+	private int i;
+	public synchronized void A(){
+		i += 1;
+	}
+	public synchronized void B(){
+		System.out.println(i);
+		System.out.println("out");
+
+	}
+	public synchronized void C(){
+		A();
+		B();
+	}
+	class MyThread implements Runnable{
+		public void run(){
+			C();
+		}
+	}
+	public static void main(String[] args){
+		new MyProblem().go();
+	}
+	void go(){
+		MyThread t = new MyThread();
+		new Thread(t).start();//s大写会说找不到符号
+		new Thread(t).start();
+	}
+}
+import java.util.*;//测试多态和泛型；
+class duotaiAndfanxing{
+	public static void main(String[] args){
+		new duotaiAndfanxing().go();
+	}
+	public void go(){
+		ArrayList<Animal> animals = new ArrayList<Animal>();
+		animals.add(new Dog());
+		animals.add(new Cat());
+		animals.add(new Dog());
+		takeAnimals(animals);
+
+		ArrayList<Dog> dogs = new ArrayList<Dog>();
+		dogs.add(new Dog());
+		dogs.add(new Dog());
+		takeAnimals(dogs);
+	}
+	public void takeAnimals(ArrayList<Animal> animals){
+		for(Animal a: animals){
+			a.eat();
+		}
+	}
+	abstract class Animal {
+		void eat(){
+			System.out.println("animal eating");//用了内部类
+		}
+	}
+	class Dog extends Animal{
+		void bark(){}
+	}
+	class Cat extends Animal{
+		void meow(){}
+	}
+}
+import java.util.*;
+public class TestTree{
+	public static void main(String [] args){
+		new TestTree().go();
+	}
+	public void go(){
+		Book b1 = new Book("How Cats work");
+		Book b2 = new Book("Remix your Body");
+		Book b3 = new Book("Finding Emo");
+
+		TreeSet<Book> Tree = new TreeSet<Book>();
+		Tree.add(b1);
+		Tree.add(b2);
+		Tree.add(b3);
+		System.out.println(Tree);
+	}
+}
+
+class Book{
+	String title;
+	public Book(String t){
+		title = t;
+	}
+}
+import java.util.*;//又一次忘记导入包，没导入包会说找不到类
+class question {
+	public static void main(String[] args){
+		ArrayList friends = new ArrayList();//java5以后这种写法就不行了，需要<>。与范型相关
+		Integer a = 2;
+		friends.add(a);
+	}
+}
+class nameandscope{
+	public static void main(String[] args){
+		for(int x = 0; x <10; x++){}
+		System.out.println(x);//编译时说找不到x
+		for(int x = 0; x <10; x++){}
+		int x = 0;
+		System.out.println(x);//从上面斜杠到这边斜杠的部分，单独变异能通过
+		/*
+		*java多行注释：
+		*int x =0;
+		*for(; x < 10; x++){}
+		*s.o.p(x)
+		*上面行得通
+		*／
+	}
+}
+import java.io.*;
+import java.net.*;
+public class Myserve{
+	File myFile;
+	int y;//for myExact()
+	String c;// for myExact()
+	String[] a = new String[1024];
+	public static void main(String[] args){
+		Myserve myserve = new Myserve();
+		myserve.myFile2stringarray();
+		myserve.go();
+	}
+	void myFile2stringarray(){
+		try {
+			myFile = new File("myxervetext.txt");
+			FileReader fileReader = new FileReader(myFile);
+			BufferedReader reader = new BufferedReader(fileReader);
+			String line = null;
+			int x = 0;
+			while((line = reader.readLine()) != null){
+				a[x] = line;//problem
+				System.out.println(a[x]);
+				x++;
+			}
+			reader.close();
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+	}
+
+	void go(){	
+		try{
+			ServerSocket serverSock = new ServerSocket(18848);
+			while(true){
+				Socket sock = serverSock.accept();
+				System.out.println("0");
+				OutputStream out = sock.getOutputStream();
+				PrintWriter writer = new PrintWriter(out);//problem
+				writer.println(myExact());
+				writer.close();
+			}
+		}
+		catch(IOException ex){
+			ex.printStackTrace();
+		}
+	}	
+	String myExact(){
+		while(a[y] != null){
+			c = a[y];
+			a[y] = null;
+			System.out.println(y);//problem: 原来上面用的是for循环for(;a[y] != null;y++),以前还有一处自己的写法类似。实际上是break的问题，原来的情况下的break完，就不会进行上面的y++。再来一次y还是0，但是a[0] == null,直接不进循环。但是不进循环y不会自加吗？也就是问不进循环体（也就不出循环体），会不会自加？结论是不会自己啊，如果会自加，初始值不进循环，范围变大，更不会进循环，而且会一直自加。例子：（int x = 10, x < 9 ,x++)。或者这样想，自加是循环体的最后一步。
+			y++;
+			break;
+		}
+		return c;
+	}
+}
+			
+			
+			
+import java.io.*;
+import java.net.*;
+public class Myclient2{
+	File myFile;
+public static void main(String[] args){
+		Myclient2 myclient = new Myclient2();
+		myclient.go();
+	}
+	void go(){
+		String line = null;
+		try{
+			Socket s = new Socket("127.0.0.1",18848);
+				InputStreamReader writer = new InputStreamReader(s.getInputStream());
+				BufferedReader reader = new BufferedReader(writer);
+				line = reader.readLine();
+				reader.close();
+		}
+		catch(IOException ex){
+			ex.printStackTrace();
+		}
+		try{
+			myFile = new File("myclienttext2.txt");
+			BufferedWriter writer = new BufferedWriter(new FileWriter(myFile));
+			writer.write(line);
+			writer.close();
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+	}	
+}
+import java.io.*;
+import java.net.*;
+public class Myclient{
+	File myFile;
+public static void main(String[] args){
+		Myclient myclient = new Myclient();
+		myclient.go();
+	}
+	void go(){
+		String line = null;
+		try{
+			Socket s = new Socket("127.0.0.1",18848);
+				InputStreamReader writer = new InputStreamReader(s.getInputStream());
+				BufferedReader reader = new BufferedReader(writer);
+				line = reader.readLine();
+				reader.close();
+		}
+		catch(IOException ex){
+			ex.printStackTrace();
+		}
+		try{
+			myFile = new File("myclienttext.txt");
+			BufferedWriter writer = new BufferedWriter(new FileWriter(myFile));
+			writer.write(line);
+			writer.close();
+		}
+		catch(Exception e){
+			e.printStackTrace();
+		}
+	}	
+}
+import java.io.*;
+class SBF{
+	public static void main(String[] args){
+		String a = args[0];
+		try {
+			PrintWriter b = new PrintWriter(new BufferedWriter(new FileWriter("foo.out")));//BufferedWriter b = new BufferedWriter(new FileWriter("SBSfile.txt"));
+			b.write(a);
+			b.close();
+		}
+		catch(IOException c){
+			c.printStackTrace();
+		}
+	}
+}
+abstract class father{
+	static son getinstance(){
+		return new son();
+	}
+	void smile(){
+		System.out.println("KKK");
+	}
+}
+class son extends father{
+	void smile(){
+		super.smile();
+		System.out.println("LLL");
+	}
+}
+class factorymodeTest{
+	public static void main(String[] args){
+		father a = father.getinstance();
+		a.smile();
+	}
+}
+class StaticSuper {
+	
+	static {
+		System.out.println("super static block");//static的s要小写
+	}
+
+	 StaticSuper(){
+		System.out.println("super constructor");
+	}
+}
+
+ class StaticTests extends StaticSuper{
+	static int rand;
+	
+	static {
+		rand = (int)(Math.random()*6);
+		System.out.println("Static block " + rand);
+	}
+
+	StaticTests(){
+		System.out.println("constructor");
+	}
+	
+	public static void main(String[] args){
+		System.out.println("in main");
+		StaticTests st = new StaticTests();
+	}
+}
+class Test1 {
+      public static int X=100;  
+      public final static int Y=200;
+      public Test1(){  
+          System.out.println("Test构造函数执行");  
+      }  
+      static{  
+          System.out.println("static语句块执行");  
+      }  
+
+     {
+         System.out.println("not static 语句块执行");
+     }
+
+     public static void display(){  
+         System.out.println("静态方法被执行");  
+     }  
+     public void display_1(){  
+         System.out.println("实例方法被执行");  
+     }  
+
+     public static void main(String [] args){
+         Test1.display();
+         System.out.println("x=" + Test1.X + "   y=" + Test1.Y );
+         Test1.display();
+         Test1 t1 = new Test1();
+         Test1 t2 = new Test1();
+         System.out.println("X=" + t1.X + "   Y=" + t1.Y);
+         Test1.display();
+     }
+ } class TestBox{
+	Integer i = 0;
+	int j;
+	public static void main(String[] args){
+		TestBox t = new TestBox();
+		t.go();
+	}
+	public void go(){
+		j = i.intValue();
+		System.out.println(j);
+		System.out.println(i);
+	}
+}
+class myScope{
+	void m(int a){
+		a = 10;
+		System.out.println(a);
+	}
+}
+class scope {
+	public static void main (String[] args){
+		int k = 1;
+		for(; k<=21; k++){
+			System.out.println(k);
+		}//缩进 空格 空行
+		myScope n = new myScope();
+		int a = 11;
+		n.m(a);
+	}
+} 
+class mouse {
+	private int length;
+	int width;
+	int heigh;
+	mouse(int w){
+		width = w;
+	}
+	mouse(){
+		
+	}
+	void set(int l){
+		length = l;
+	}
+	int get(){
+		return length;
+	}
+}
+class mouseTest{
+	public static void main(String[] args){
+		mouse m = new mouse(0);
+		m.heigh = 1;
+		int a = m.get();
+		System.out.println(a+" "+ m.heigh);
+		mouse n = new mouse(2);
+		System.out.println(n.width);
+	}
+}
+	
+public class Of76 extends Clowns
+{
+    public static void main(String[] args) {
+        Nose[] i = new Nose[3];
+        i[0] = new Acts();
+        i[1] = new Clowns();
+        i[2] = new Of76();
+        for (int x = 0; x < 3; x++) {
+            System.out.println(i[x].iMethod() + " " + i[x].getClass());
+        }
+    }
+}
+
+interface Nose { public int iMethod(); }
+abstract class Picasso implements Nose { public int iMethod() { return 7; }}
+class Clowns extends Picasso { }
+class Acts implements Nose { public int iMethod() { return 5; }}//class Acts extends Picasso { public int iMethod() { return 5; }}class MyArrayList {
+	private Object[] MyArrayList = new Object[1024];
+	public void add(Object a){
+		int xulie = (int)(MyArrayList.length * Math.random());
+		for(;;xulie++){
+			if(MyArrayList[xulie] == null){
+				MyArrayList[xulie] = a;
+				System.out.println(a + " add in " + xulie);
+				break;
+			}
+		}
+		for(Object e:MyArrayList){
+			if(e != null){
+				System.out.println(e);
+			}
+		}
+	}
+}
+class MyArrayListTest{
+	public static void main (String[] args){
+		MyArrayList b = new MyArrayList();
+		MyArrayListTest d = new MyArrayListTest();
+		b.add(d);
+	}
+}
+	 
+public class overover {
+	void feifei(){
+		System.out.println("feifei!");
+	}
+	void feifei(String a){
+		System.out.println("feifei!");
+		System.out.println(a);
+	}
+}
+class overoverson extends overover{
+	void feifei(){
+		System.out.println("feifeifeifei2!");
+	}
+}
+class overovertest {
+	public static void main(String[] args ){
+		overoverson o = new overoverson();
+		o.feifei();
+		o.feifei("a");
+
+	}
+}
+import java.util.ArrayList;//要导入类
+public class printlnTest {
+	public static void main (String[] args) {
+			boolean x = true;
+		System.out.println(x);
+		ArrayList<printlnTest> p = new ArrayList<printlnTest>();
+		printlnTest a = new printlnTest();
+		boolean e = p.add(a);
+		int c = p.indexOf(a);
+		printlnTest d = p.get(c);
+		String f = a.toString();
+		System.out.println(f);
+		System.out.println(d); 
+		System.out.println(e);
+	}
+}
+import java.util.ArrayList;//导入类
+public class DotCom {
+        private String name;
+        private ArrayList<String> location;
+        public void setName (String usergivename){
+                name = usergivename;
+        }
+        public void setLocationCells (ArrayList<String> givelocation){
+                location = givelocation;
+        }
+        public boolean checkYouself(String giveinput){
+                boolean oresult = false;
+                for(String cells : location){
+                        if(cells.equals(giveinput)){
+                                oresult = true;
+                                location.remove(cells);
+                                break;
+                        }
+                }
+                return oresult;
+        }
+}
+class PlusPlusY {
+	public static void main (String[] args){
+		int y=0;
+		System.out.print (++y +" ");
+		}
+}
+
+class MixFor5{
+	public static void main(String[] args){
+		int x = 0;
+		int y = 30;
+		for (int outer = 0; outer < 3; outer++){
+			for(int inner = 4; inner >1; inner--){
+				x = x;
+				y = y-2;
+				if (x==6){
+					break;
+				}
+				x = x + 3;
+			}
+			y = y - 2;
+		}
+		System.out.println(x + " "+ y);
+	}
+}
+class getUserInputTest{
+	public static void main (String[] args){
+		GameHelper a = new GameHelper();
+		String b = a.getUserInput("Enter: ");
+		System.out.println("Show: " + b);
+	}
+}
+import java.io.*;
+import java.util.*;
+
+public class GameHelper {
+
+  private static final String alphabet = "abcdefg";
+  private int gridLength = 7;
+  private int gridSize = 49;
+  private int [] grid = new int[gridSize];
+  private int comCount = 0;
+
+
+  public String getUserInput(String prompt) {
+     String inputLine = null;
+     System.out.print(prompt + "  ");
+     try {
+       BufferedReader is = new BufferedReader(
+	 new InputStreamReader(System.in));
+       inputLine = is.readLine();
+       if (inputLine.length() == 0 )  return null; 
+     } catch (IOException e) {
+       System.out.println("IOException: " + e);
+     }
+     return inputLine.toLowerCase();
+  }
+
+  
+  
+ public ArrayList<String> placeDotCom(int comSize) {                 // line 19
+    ArrayList<String> alphaCells = new ArrayList<String>();
+    String [] alphacoords = new String [comSize];      // holds 'f6' type coords
+    String temp = null;                                // temporary String for concat
+    int [] coords = new int[comSize];                  // current candidate coords
+    int attempts = 0;                                  // current attempts counter
+    boolean success = false;                           // flag = found a good location ?
+    int location = 0;                                  // current starting location
+    
+    comCount++;                                        // nth dot com to place
+    int incr = 1;                                      // set horizontal increment
+    if ((comCount % 2) == 1) {                         // if odd dot com  (place vertically)
+      incr = gridLength;                               // set vertical increment
+    }
+
+    while ( !success & attempts++ < 200 ) {             // main search loop  (32)
+	location = (int) (Math.random() * gridSize);      // get random starting point
+        //System.out.print(" try " + location);
+	int x = 0;                                        // nth position in dotcom to place
+        success = true;                                 // assume success
+        while (success && x < comSize) {                // look for adjacent unused spots
+          if (grid[location] == 0) {                    // if not already used
+             coords[x++] = location;                    // save location
+             location += incr;                          // try 'next' adjacent
+             if (location >= gridSize){                 // out of bounds - 'bottom'
+               success = false;                         // failure
+             }
+             if (x>0 & (location % gridLength == 0)) {  // out of bounds - right edge
+               success = false;                         // failure
+             }
+          } else {                                      // found already used location
+              // System.out.print(" used " + location);  
+              success = false;                          // failure
+          }
+        }
+    }                                                   // end while
+
+    int x = 0;                                          // turn good location into alpha coords
+    int row = 0;
+    int column = 0;
+    // System.out.println("\n");
+    while (x < comSize) {
+      grid[coords[x]] = 1;                              // mark master grid pts. as 'used'
+      row = (int) (coords[x] / gridLength);             // get row value
+      column = coords[x] % gridLength;                  // get numeric column value
+      temp = String.valueOf(alphabet.charAt(column));   // convert to alpha
+      
+      alphaCells.add(temp.concat(Integer.toString(row)));
+      x++;
+
+      // System.out.print("  coord "+x+" = " + alphaCells.get(x-1));
+      
+    }
+    // System.out.println("\n");
+    
+    return alphaCells;
+   }
+}class SimpleDotComGame{
+	public static void main (String[] args){
+		simpleDotCom G = new simpleDotCome();
+		int numOfGuess = 0;
+
+public class NumberTest{
+	public static void main (String[] args){
+		char T = '1';
+		int num = Integer.parseInt(T);
+		System.out.println("parse: " + num);
+		}
+}class DogLength {
+	private int Length;
+	public void setLength(int l){
+		Length = l;
+	}
+	public int getLength(){
+		return Length;
+	}
+}
+
+class DogLengthTest{
+	public static void main (String[] args) {
+	DogLength lucis = new DogLength ();
+	short a = 10 ;
+	lucis.setLength(a);
+	System.out.println("Length: " + lucis.getLength());
+	}
+}
+	
+class Gooddog {
+	 int size;
+	public void setsize(int s){
+		size = s;
+		}
+	public int getsize(){
+		return size;
+		}
+}
+class Testdog{
+	public static void main(String[] args){
+		Gooddog ruvis = new Gooddog();
+		ruvis.setsize(5);
+		int a = ruvis.getsize();
+		ruvis.size = 10;
+		int c = ruvis.size;
+		System.out.println( "Size: " + c);
+	}
+}
+class Test1
+{
+int i = 1;
+
+
+}
+
+ class Test2
+{
+ int i = 2;
+ public static void main(String[] args)
+ {
+  System.out.println("main method");
+ }
+}public class BeerSong{
+	public static void main(String[] args){
+		int beerNum = 99;
+		String word = "bottles";
+		
+
+	while (beerNum > 0){
+		
+
+		if (beerNum == 1){
+			word = "bottle";
+			}
+		
+		System.out.println(beerNum + " " + word + " of beer on the wall");
+		System.out.println(beerNum + " " + word + " of beer.");
+		System.out.println("Take one down.");
+		System.out.println("Pass it around.");
+		beerNum = beerNum - 1;
+		
+		if (beerNum > 0){
+			System.out.println(beerNum + " " + word + " of beer on the wall");
+			}
+		else{
+			System.out.println("No more bottles of beer on the wall.");
+			}
+	}
+	}
+}
+class InsideGame{
+	int a, b, c;
+	int[] nums;
+	void array(int[] mainenterarray){
+		nums[3]={1;2;3} ; 
+		int d = nums[].length - 2;
+		int e;
+		e = (int)(Math.random() * d);
+		System.out.println("e " + e);
+		a = e;
+		b = a + 1;
+		c = b + 1;
+	}
+	public static void main (String[] args){
+		int randomnumber = 3 + (int)(Math.random() * 20);
+		System.out.println("randomnuber " + randomnumber);
+		InsideGame[] game2 = new InsideGame(randomnumber);
+		InsideGame game = new InsideGame();
+		game.array(game2);
+		System.out.println("a " + game.a);		
+		int onenumber;
+		while(true){
+			onenumber = (int)(Math.random() * randomnumber);
+			System.out.println(onenumber);
+			if(onenumber ==game.a){
+				game.a=randomnumber;
+			}
+			if(onenumber ==game.b){
+				game.b=randomnumber;
+			}
+			if(onenumber ==game.a){
+				game.c=randomnumber;
+			}
+			if(game.a == randomnumber){
+				if(game.b == randomnumber){
+					if(game.a == randomnumber){
+						break;
+					}
+				}
+			}
+		}
+	}
+}class InsideGame{
+	int a, b, c;
+	void array(int mainenterarray){
+		int d = mainenterarray - 2;
+		int e;
+		e = (int)(Math.random() * d);
+		System.out.println("e " + e);
+		a = e;
+		b = a + 1;
+		c = b + 1;
+	}
+	public static void main (String[] args){
+		int randomnumber = 3 + (int)(Math.random() * 20);
+		System.out.println("randomnuber " + randomnumber);
+		InsideGame game = new InsideGame();
+		game.array(randomnumber);
+		System.out.println("a " + game.a);		
+		int onenumber;
+		while(true){
+			onenumber = (int)(Math.random() * randomnumber);
+			System.out.println(onenumber);
+			if(onenumber ==game.a){
+				game.a=randomnumber;
+			}
+			if(onenumber ==game.b){
+				game.b=randomnumber;
+			}
+			if(onenumber ==game.a){
+				game.c=randomnumber;
+			}
+			if(game.a == randomnumber){
+				if(game.b == randomnumber){
+					if(game.a == randomnumber){
+						break;
+					}
+				}
+			}
+		}
+	}
+}public class Mix4{
+	int counter = 0;
+	int a = 9;
+	int b = 5;
+	public static void main(String[] args){
+		int count = 0;
+		Mix4 [] m4a = new Mix4[20];
+		int x = 0;
+		while (x < 19){
+			m4a[x] = new Mix4();
+			m4a[x].counter = m4a[x].counter + 1;
+			count = count + 1;
+			System.out.println(count);
+			count = count + m4a[x].maybeNew(x);
+			x= x + 1;
+			System.out.println(count);
+		}
+		System.out.println(count + " " + m4a[1].counter);
+	}
+	private int maybeNew(int index){
+		if(index < 1){
+			Mix4 m4 = new Mix4();
+			m4.counter = m4.counter + 1;
+			return 1;
+		}
+		return 0;
+	}
+}
+class Triangle{
+	double area;
+	int height;
+	int length;
+	public static void main(String[] args){
+		int x = 0;
+		Triangle [] ta =new Triangle [4];
+		while(x<4){
+			ta [x] = new Triangle();
+			ta [x].height = (x+1)*2;
+			ta [x].length = x + 4;
+			ta [x].setArea();
+			System.out.print("triangle " +x+", area");
+			System.out.println(" = " + ta [x].area);
+			x = x+1;
+		}
+		int y = x;
+		x = 27;
+		Triangle t5 = ta [2];
+		ta[2].area = 343;
+		System.out.print("y = " + y);
+		System.out.println(", t5 area = "+ t5.area);
+	}
+	void setArea(){
+		area =  (height * length)/2;
+	}
+}
+class TestArrays{
+	public static void main(String [] args){
+		String [] islands = new String[4];
+		islands[0] = "Bermuda";
+		islands[1] = "Fiji";
+		islands[2] = "Azores";
+		islands[3] = "Cozumel";
+		int [] index = new int[4];
+		index[0] = 1;
+		index[1] = 3;
+		index[2] = 0;
+		index[3] = 2;
+		int y = 0;
+		int ref;
+		while (y<4) {
+			System.out.println("island = ");
+			ref = index[y];
+			System.out.println(islands[ref]);
+			y = y +1;
+		}
+	}
+}
+class DrumKit {
+	boolean tophat = true;
+	boolean snare = true;
+	void playsnare(){
+		System.out.println("bang bang ba-bang");
+	}
+	void playtophat(){
+		System.out.println("ding ding da ding");
+	}
+}
+class DrumKitTestDrive{
+	public static void main (String [] aaargs){
+		DrumKit d = new DrumKit ();
+		d.playsnare();
+		d.playtophat();
+	}
+}
+class GameLauncher{
+	public static void main (String[] args){
+		class GuessNumber;
+	}
+}
+class Threeexercise{
+	public static void main (String args[]){
+		System.out.println("The third exercise.");
+		int a = 3;
+		while(a > 0){
+			System.out.println("a " + (a-1));
+			a=a - 1;
+		}
+		if(a!=0){
+			System.out.println("The third exercise.");}
+		else{
+			System.out.println("The third exercise.");}
+	}
+}
+public class Exerciselb{
+	public static void main(String [] args){
+		int x = 1;
+		while ( x< 10){
+			if( x > 3){
+				System.out.println("big x");
+			}
+			x = x + 1;
+		}
+	}
+}
+public class FirstSec {
+	public static void main (String [] args) {
+		int x= 3;
+		if (x > 2){System.out.print("a");}
+		x =x - 1;
+		System.out.print("-");
+		if (x == 2){System.out.print("b c");}
+		x =x - 1;
+		System.out.print("-");
+		if (x == 1){System.out.print("d");}
+		x =x - 1;
+					}
+}
+public class First {
+	public static void main (String [] args) {
+		int x = 99;
+		while(x > 0){
+			System.out.println(x);
+			x=x-1;
+		}
+		System.out.println(x);
+	}
+}
+public class kkF {
+    public static void main(String[] args){
+        System.out.print("qwertyyuiopfgh\n");
+    }
+}
